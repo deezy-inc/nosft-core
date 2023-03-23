@@ -1,6 +1,6 @@
 {
     "name": "nosft-core-ajs",
-    "version": "1.7.5",
+    "version": "0.0.0",
     "description": "Tools for making a Nosft client.",
     "repository": {
         "type": "git",
@@ -10,11 +10,11 @@
         "./lib/**/*"
     ],
     "types": "./lib/index.d.ts",
-    "main": "lib/nostr.cjs.js",
-    "module": "lib/esm/nostr.mjs",
+    "main": "lib/nosft.cjs.js",
+    "module": "lib/esm/nosft.mjs",
     "exports": {
-        "import": "./lib/esm/nostr.mjs",
-        "require": "./lib/nostr.cjs.js"
+        "import": "./lib/esm/nosft.mjs",
+        "require": "./lib/nosft.cjs.js"
     },
     "license": "Public domain",
     "dependencies": {
