@@ -13,10 +13,19 @@ npm install nosft-core # or yarn add nosft-core
 NodeJs & Browser
 
 ```js
-const nosft = require('nosft-core-ajs');
+const nosft = require('nosft-core');
 const { utils } = nosft;
 
 console.log(utils.normalizeURL('https://google.com'));
+```
+
+### Getting inscriptions
+
+```js
+import { getInscriptions, getAddress } from 'nosft-core';
+
+const addresss = await getAddress();
+const inscriptionts = await getInscriptions(address);
 ```
 
 ## Developing
