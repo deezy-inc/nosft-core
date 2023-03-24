@@ -11,6 +11,13 @@ export interface RawInscription {
     num: number;
 }
 
+export interface BaseUtxo {
+    txid: string;
+    vout: number;
+    status: UtxoStatus;
+    value: number;
+}
+
 export interface RawUtxo {
     txid: string;
     version: number;
@@ -20,7 +27,7 @@ export interface RawUtxo {
     size: number;
     weight: number;
     fee: number;
-    status: Status;
+    status: UtxoStatus;
 }
 
 export interface Vin {
@@ -49,7 +56,7 @@ export interface Inscription {
     size: number;
     weight: number;
     fee: number;
-    status: Status;
+    status: UtxoStatus;
     inscriptionId: string;
     collection: Collection;
     content_type: string;
@@ -70,7 +77,7 @@ export interface Meta {
     name: string;
 }
 
-export interface Status {
+export interface UtxoStatus {
     confirmed: boolean;
     block_height: number;
     block_hash: string;
