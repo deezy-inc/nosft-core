@@ -7,7 +7,9 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { Observable } from 'rxjs';
 
+const isProduction = !TESTNET;
 const isBrowser = typeof window !== 'undefined';
+const ordinalsExplorerUrl = isProduction ? 'https://ordinals.com' : 'https://explorer-signet.openordex.org';
 
 type Order = {}; // TODO: fix me
 
@@ -38,6 +40,79 @@ async function fetchBitcoinPrice({ bitcoinPriceApiUrl, baseMempoolApiUrl, feeLev
     const recommendedFeeRate = recommendedFeeRateData[feeLevel];
 
     return { bitcoinPrice, recommendedFeeRate };
+}
+
+async function doesUtxoContainInscription(utxo: { txid: string; vout: number }): Promise<boolean> {
+    const html = await fetch(`${ordinalsExplorerUrl}/output/${utxo.txid}:${utxo.vout}`).then((response) =>
+        response.text()
+    );
+
+    return html.match(/class=thumbnails/) !== null;
+}
+
+function satsToFormattedDollarString(sats: number, bitcoinPrice: number): string {
+    return (satToBtc(sats) * bitcoinPrice).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
+function btcToSat(btc: number): number {
+    return Math.floor(Number(btc) * 10 ** 8);
+}
+
+function satToBtc(sat: number): number {
+    return Number(sat) / 10 ** 8;
+}
+
+function calculateFee(vins: number, vouts: number, recommendedFeeRate: number, includeChangeOutput = true): number {
+    const baseTxSize = 10;
+    const inSize = 180;
+    const outSize = 34;
+
+    const txSize = baseTxSize + vins * inSize + vouts * outSize + (includeChangeOutput ? outSize : 0);
+    const fee = txSize * recommendedFeeRate;
+
+    return fee;
+}
+
+async function selectUtxos(
+    utxos: { value: number; txid: string; vout: number }[],
+    amount: number,
+    vins: number,
+    vouts: number,
+    recommendedFeeRate: number,
+    dummyUtxoValue: number
+): Promise<{ value: number; txid: string; vout: number }[]> {
+    const selectedUtxos: { value: number; txid: string; vout: number }[] = [];
+    let selectedAmount = 0;
+
+    // Sort descending by value, and filter out dummy utxos
+    utxos = utxos.filter((x) => x.value > dummyUtxoValue).sort((a, b) => b.value - a.value);
+
+    for (const utxo of utxos) {
+        // Never spend a utxo that contains an inscription for cardinal purposes
+        if (await doesUtxoContainInscription(utxo)) {
+            continue;
+        }
+        selectedUtxos.push(utxo);
+        selectedAmount += utxo.value;
+
+        if (
+            selectedAmount >=
+            amount + dummyUtxoValue + calculateFee(vins + selectedUtxos.length, vouts, recommendedFeeRate)
+        ) {
+            break;
+        }
+    }
+
+    if (selectedAmount < amount) {
+        throw new Error(`Not enough cardinal spendable funds.
+Address has:  ${satToBtc(selectedAmount)} BTC
+Needed:          ${satToBtc(amount)} BTC`);
+    }
+
+    return selectedUtxos;
 }
 
 class OpenOrdexFactory {
@@ -85,5 +160,3 @@ class OpenOrdexFactory {
         this.recommendedFeeRate = recommendedFeeRate;
     }
 }
-
-export {};
