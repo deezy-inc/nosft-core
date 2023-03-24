@@ -1,6 +1,6 @@
 {
     "name": "nosft-core-ajs",
-    "version": "0.0.0",
+    "version": "0.0.2",
     "description": "Tools for making a Nosft client.",
     "repository": {
         "type": "git",
@@ -29,6 +29,8 @@
     },
     "keywords": [],
     "devDependencies": {
+        "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+        "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
         "@types/node": "^18.13.0",
         "@typescript-eslint/eslint-plugin": "^5.51.0",
         "@typescript-eslint/parser": "^5.51.0",
