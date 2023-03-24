@@ -10,6 +10,7 @@ import { Observable } from 'rxjs';
 const isProduction = !TESTNET;
 const isBrowser = typeof window !== 'undefined';
 const ordinalsExplorerUrl = isProduction ? 'https://ordinals.com' : 'https://explorer-signet.openordex.org';
+const network = isProduction ? bitcoin.networks.bitcoin : bitcoin.networks.testnet;
 
 type Order = {}; // TODO: fix me
 
@@ -158,5 +159,44 @@ class OpenOrdexFactory {
         });
         this.bitcoinPrice = bitcoinPrice;
         this.recommendedFeeRate = recommendedFeeRate;
+    }
+
+    async validateSellerPSBTAndExtractPrice(sellerSignedPsbtBase64: string, utxo: string): Promise<number | undefined> {
+        try {
+            this.sellerSignedPsbt = bitcoin.Psbt.fromBase64(sellerSignedPsbtBase64, {
+                network,
+            });
+            const sellerInput = this.sellerSignedPsbt.txInputs[0];
+            const sellerSignedPsbtInput = `${sellerInput.hash.reverse().toString('hex')}:${sellerInput.index}`;
+
+            if (sellerSignedPsbtInput !== utxo) {
+                throw `Seller signed PSBT does not match this inscription\n\n${sellerSignedPsbtInput}\n!=\n${utxo}`;
+            }
+
+            if (this.sellerSignedPsbt.txInputs.length !== 1 || this.sellerSignedPsbt.txInputs.length !== 1) {
+                throw `Invalid seller signed PSBT`;
+            }
+
+            try {
+                await this.sellerSignedPsbt.extractTransaction(true);
+            } catch (e) {
+                if (e! instanceof Error) {
+                    if (e.message === 'Not finalized') {
+                        throw 'PSBT not signed';
+                    } else if (e.message !== 'Outputs are spending more than Inputs') {
+                        throw 'Invalid PSBT ' + e.message;
+                    }
+                } else {
+                    throw 'Invalid PSBT ' + e;
+                }
+            }
+
+            const sellerOutput = this.sellerSignedPsbt.txOutputs[0];
+            this.price = sellerOutput.value;
+
+            return Number(this.price);
+        } catch (e) {
+            console.error(e);
+        }
     }
 }
