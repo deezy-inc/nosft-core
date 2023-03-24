@@ -1,6 +1,6 @@
 {
     "name": "nosft-core",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Tools for making a Nosft client.",
     "repository": {
         "type": "git",
