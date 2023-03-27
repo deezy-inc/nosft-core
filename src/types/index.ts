@@ -76,3 +76,47 @@ export interface Status {
     block_hash: string;
     block_time: number;
 }
+
+export interface Escrow {
+    bought_at: string;
+    satoshi_price: number;
+    seller_address: string;
+}
+
+export interface SaleOrder {
+    title: string;
+    txid: string;
+    inscriptionId: string;
+    value: number;
+    usdPrice: string;
+    id: string;
+    kind: number;
+    pubkey: string;
+    created_at: number;
+    content: string;
+    tags: Array<string[]>;
+    sig: string;
+    collection: null;
+    content_length: number;
+    content_type: string;
+    created: number;
+    escrow: Escrow;
+    genesis_fee: number;
+    genesis_height: number;
+    meta: null;
+    num: number;
+}
+
+export interface UtxoStatus {
+    confirmed: boolean;
+    block_height: number;
+    block_hash: string;
+    block_time: number;
+}
+
+export interface BaseUtxo {
+    txid: string;
+    vout: number;
+    status: UtxoStatus;
+    value: number;
+}
