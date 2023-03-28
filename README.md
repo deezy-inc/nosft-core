@@ -13,19 +13,61 @@ npm install nosft-core # or yarn add nosft-core
 NodeJs & Browser
 
 ```js
-const nosft = require('nosft-core');
-const { utils } = nosft;
+const nosftCore = require('nosft-core');
 
-console.log(utils.normalizeURL('https://google.com'));
+or
+const { nosft } = require('nosft-core');
+
+or
+
+import { nosft } = require('nosft-core');
+```
+
+### Initialize library
+
+Defaults to mainnet config
+
+```js
+const { nosft } = require('nosft-core');
+
+(async () => {
+    const inscriptions = await nosft.getAddressInscriptions({
+        address: process.env.BTC_ADDRESS,
+        offset: 0,
+        limit: 2,
+    });
+    console.log(JSON.stringify(inscriptions, undefined, 4));
+})();
+```
+
+#### Configure library
+
+If you want to specify your custom configs, you can do so by:
+
+```js
+const nosftCore = require('nosft-core');
+
+(async () => {
+    const { nosft } = nosftCore.configure({ nosftBaseUrl: 'http://localhost:3000/api', network: 'testnet' });
+    const inscriptions = await nosft.getAddressInscriptions({
+        address: process.env.BTC_ADDRESS,
+        offset: 0,
+        limit: 2,
+    });
+
+    console.log(JSON.stringify(inscriptions, undefined, 4));
+})();
 ```
 
 ### Getting inscriptions
 
 ```js
-import { getInscriptions, getAddress } from 'nosft-core';
-
-const addresss = await getAddress();
-const inscriptionts = await getInscriptions(address);
+const { nosft } = require('nosft-core');
+const inscriptions = await nosft.getAddressInscriptions({
+    address: process.env.BTC_ADDRESS,
+    offset: 0,
+    limit: 2,
+});
 ```
 
 ## Developing

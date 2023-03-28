@@ -1,7 +1,7 @@
-import { TESTNET } from './constants';
+import { TESTNET } from '../config/constants';
 
 import axios from 'axios';
-import { BaseUtxo } from './types';
+import { BaseUtxo } from '../types';
 
 // eslint-disable-next-line no-promise-executor-return
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
