@@ -5,3 +5,5 @@ package-lock.json
 .envrc
 lib
 test.html
+
+.vscode/settings.json
