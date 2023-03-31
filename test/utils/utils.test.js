@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-const { utils } = require('./lib/nosft.cjs');
+const { utils } = require('../../lib/nosft.cjs.js');
 
 describe('dummy test', () => {
     test('try out cjs file', async () => {

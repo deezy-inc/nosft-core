@@ -1,6 +1,9 @@
 {
     "name": "nosft-core",
     "version": "0.0.0",
+    "engines": {
+        "node": ">=17.0.0"
+    },
     "description": "Tools for making a Nosft client.",
     "repository": {
         "type": "git",
