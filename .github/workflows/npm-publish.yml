@@ -19,5 +19,5 @@ jobs:
             - run: just emit-types
             - uses: JS-DevTools/npm-publish@v1
               with:
-                  token: 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
+                  token: ${{ secrets.NPM_TOKEN }}
                   greater-version-only: true
