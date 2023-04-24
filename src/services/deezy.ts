@@ -1,4 +1,5 @@
-import { DEEZY_API_URL, NETWORK } from '../config/constants';
+// import { DEEZY_API_URL, Network } from '../config/constants';
+
 import { Collection } from '../types/deezy';
 import {
     MintInscriptionRequest,
@@ -10,6 +11,9 @@ import {
     UpdateCollectionAllowListRequest,
 } from '../types/deezy';
 import ApiService from '../utils/httpService';
+const DEEZY_API_URL = (_network: any) => {
+    return 'https://deezy-api.nosft.io';
+};
 
 interface MintCustomInscriptionResponse {
     bolt11_invoice: string;
@@ -22,7 +26,7 @@ interface BoostResponse {
 
 export interface DeezyConfig {
     baseUrl?: string;
-    network?: NETWORK;
+    network?: any;
 }
 
 class Deezy extends ApiService {
