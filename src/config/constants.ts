@@ -22,3 +22,4 @@ export const ORDINALS_EXPLORER_URL_LEGACY = !TESTNET ? 'https://ordinals.com' : 
 export const DEFAULT_DERIV_PATH = "m/86'/0'/0'/0/0";
 export const DUMMY_UTXO_VALUE = 600;
 export const FEE_LEVEL = 'hourFee'; // "fastestFee" || "halfHourFee" || "hourFee" || "economyFee" || "minimumFee"
+export const NUMBER_OF_DUMMY_UTXOS_TO_CREATE = 2;

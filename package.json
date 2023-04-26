@@ -33,7 +33,7 @@
         "ecpair": "^2.1.0",
         "ethers": "^5.7.2",
         "match-sorter": "^6.3.1",
-        "nostr-tools": "^1.6.0",
+        "nostr-tools": "1.10.1",
         "tiny-secp256k1": "^2.2.1",
         "varuint-bitcoin": "^1.1.2"
     },
