@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop, no-continue, react/forbid-prop-types, radix, no-empty, guard-for-in */
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
-import * as bitcoin from 'bitcoinjs-lib';
+const bitcoin = require('bitcoinjs-lib');
 // eslint-disable-next-line
 const ecc = require('tiny-secp256k1');
 

@@ -1,4 +1,4 @@
-import * as bitcoin from 'bitcoinjs-lib';
+const bitcoin = require('bitcoinjs-lib');
 // eslint-disable-next-line
 const ecc = require('tiny-secp256k1');
 import { ethers } from 'ethers';

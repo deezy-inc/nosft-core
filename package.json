@@ -1,6 +1,6 @@
 {
-    "name": "nosft-core",
-    "version": "1.0.3",
+    "name": "nosft-core-ajs",
+    "version": "1.0.4",
     "engines": {
         "node": ">=18.0.0"
     },

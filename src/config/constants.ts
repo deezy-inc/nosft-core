@@ -1,4 +1,4 @@
-import * as bitcoin from 'bitcoinjs-lib';
+const bitcoin = require('bitcoinjs-lib');
 
 export const NOSTR_RELAY_URL = 'wss://nostr.openordex.org';
 export const NOSTR_KIND_INSCRIPTION = 802;

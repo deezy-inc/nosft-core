@@ -1,9 +1,9 @@
 import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371';
 import { ethers } from 'ethers';
 
-import { ECPairFactory } from 'ecpair';
+const ECPairFactory = require('ecpair').ECPairFactory;
 import { BIP32Factory } from 'bip32';
-import * as bitcoin from 'bitcoinjs-lib';
+const bitcoin = require('bitcoinjs-lib');
 // eslint-disable-next-line
 const ecc = require('tiny-secp256k1');
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
