@@ -4,7 +4,8 @@ import { ethers } from 'ethers';
 import { ECPairFactory } from 'ecpair';
 import { BIP32Factory } from 'bip32';
 import * as bitcoin from 'bitcoinjs-lib';
-import * as ecc from 'tiny-secp256k1';
+// eslint-disable-next-line
+const ecc = require('tiny-secp256k1');
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
 import axios from 'axios';
 import { Crypto } from './crypto';

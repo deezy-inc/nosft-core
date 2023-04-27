@@ -1,5 +1,6 @@
 import * as bitcoin from 'bitcoinjs-lib';
-import * as ecc from 'tiny-secp256k1';
+// eslint-disable-next-line
+const ecc = require('tiny-secp256k1');
 import { ethers } from 'ethers';
 import { BIP32Factory } from 'bip32';
 import { Crypto } from './crypto';

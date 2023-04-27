@@ -53,7 +53,7 @@ const inscriptionts = await getInscriptions(address);
 You can install the Nosft Core SDK by running:
 
 ```bash
-npm install nosft-core-ajs
+npm install nosft-core
 ```
 
 ### Configuration
@@ -61,7 +61,7 @@ npm install nosft-core-ajs
 You can ovewrite any nosft configuration variable available by passing the object on initialization.
 
 ```js
-import { Nosft } from 'nosft-core-ajs';
+import { Nosft } from 'nosft-core';
 
 const localConfig = {
     // Overwrite RELAY URL
@@ -145,7 +145,7 @@ const {
 Here is the list of all required methods to create a client just like nosft.
 
 ```javascript
-import { Nosft } from 'nosft-core-ajs';
+import { Nosft } from 'nosft-core';
 import { localConfig } from '@lib/constants.config';
 
 const nosft = Nosft({ ...localConfig });
