@@ -142,6 +142,144 @@ const {
 
 ## Usage
 
+Here is the list of all required methods to create a client just like nosft.
+
+```javascript
+import { Nosft } from 'nosft-core-ajs';
+import { localConfig } from '@lib/constants.config';
+
+const nosft = Nosft({ ...localConfig });
+
+const { connectWallet } = nosft.wallet;
+const { getAddressInfo } = nosft.address;
+const { doesUtxoContainInscription, getAddressUtxos } = nosft.utxo;
+const { getInscription, getInscriptions } = nosft.inscriptions;
+const { signPsbtMessage, broadcastTx, signAndBroadcastUtxo, getMetamaskSigner, signSigHash } = nosft.psbt;
+const { signAndBroadcastEvent, getNostrInscription, subscribeOrders, unsubscribeOrders } = nosft.nostr;
+
+const {
+    getAvailableUtxosWithoutInscription,
+    generatePSBTListingInscriptionForBuy,
+    generatePSBTListingInscriptionForSale,
+    getOrderInformation,
+} = nosft.openOrdex;
+
+const {
+    shortenStr,
+    satsToFormattedDollarString,
+    fetchBitcoinPrice,
+    outputValue,
+    toXOnly,
+    sortUtxos,
+    parseOutpoint,
+    fetchRecommendedFee,
+    satToBtc,
+    calculateFee,
+    getTxHexById,
+    tweakSigner,
+} = nosft.crypto;
+
+const { config } = nosft;
+
+const {
+    NOSTR_RELAY_URL,
+    NOSTR_KIND_INSCRIPTION,
+    INSCRIPTION_SEARCH_DEPTH,
+    GITHUB_URL,
+    DEFAULT_FEE_RATE,
+    SENDS_ENABLED,
+    TESTNET,
+    ASSUMED_TX_BYTES,
+    ORDINALS_EXPLORER_URL,
+    RELAYS,
+    MAX_ONSALE,
+    ORDINALS_WALLET,
+    BITCOIN_PRICE_API_URL,
+    TURBO_API,
+    BLOCKSTREAM_API,
+    POOL_API_URL,
+    MEMPOOL_API_URL,
+    NETWORK,
+    ORDINALS_EXPLORER_URL_LEGACY,
+    DEFAULT_DERIV_PATH,
+    DUMMY_UTXO_VALUE,
+    FEE_LEVEL,
+    TAPROOT_MESSAGE,
+} = config;
+
+export default nosft;
+export {
+    getAddressInfo,
+    connectWallet,
+
+    // Crypto
+    shortenStr,
+    satsToFormattedDollarString,
+    fetchBitcoinPrice,
+    outputValue,
+    toXOnly,
+    sortUtxos,
+    parseOutpoint,
+    fetchRecommendedFee,
+    satToBtc,
+    calculateFee,
+    getTxHexById,
+    tweakSigner,
+
+    // utxo
+    doesUtxoContainInscription,
+    getAddressUtxos,
+
+    // inscriptions
+    getInscription,
+    getInscriptions,
+
+    // psbt
+    signPsbtMessage,
+    broadcastTx,
+    signAndBroadcastUtxo,
+    getMetamaskSigner,
+    signSigHash,
+
+    // open ordex
+    getAvailableUtxosWithoutInscription,
+    generatePSBTListingInscriptionForBuy,
+    generatePSBTListingInscriptionForSale,
+    getOrderInformation,
+
+    // nostr
+    signAndBroadcastEvent,
+    getNostrInscription,
+    subscribeOrders,
+    unsubscribeOrders,
+
+    // Config variables
+    TAPROOT_MESSAGE,
+    NOSTR_RELAY_URL,
+    NOSTR_KIND_INSCRIPTION,
+    INSCRIPTION_SEARCH_DEPTH,
+    GITHUB_URL,
+    DEFAULT_FEE_RATE,
+    SENDS_ENABLED,
+    TESTNET,
+    ASSUMED_TX_BYTES,
+    ORDINALS_EXPLORER_URL,
+    RELAYS,
+    MAX_ONSALE,
+    ORDINALS_WALLET,
+    BITCOIN_PRICE_API_URL,
+    TURBO_API,
+    BLOCKSTREAM_API,
+    POOL_API_URL,
+    MEMPOOL_API_URL,
+    NETWORK,
+    ORDINALS_EXPLORER_URL_LEGACY,
+    DEFAULT_DERIV_PATH,
+    DUMMY_UTXO_VALUE,
+    FEE_LEVEL,
+};
+```
+
 ### Get owned ordinals
 
 This function returns all of the user utxo's, if you only need inscription, filter them
@@ -235,48 +373,47 @@ const nostr = await getNostrInscription(inscriptionId);
 
 Once we have the inscription and nostr data we can continue with the buy.
 
-````javascript
+```javascript
 import {
     signPsbtMessage,
     broadcastTx,
     getAvailableUtxosWithoutInscription,
     generatePSBTListingInscriptionForBuy,
-} from "@services/nosft";
+} from '@services/nosft';
 
 // If buying with BTC, user should get at least 2 dummy utxos
 const updatePayerAddress = async (address) => {
-   try {
-      const { selectedUtxos: _selectedUtxos, dummyUtxos: _dummyUtxos } =
-            await getAvailableUtxosWithoutInscription({
-               address,
-               price: utxo.value,
-            });
+    try {
+        const { selectedUtxos: _selectedUtxos, dummyUtxos: _dummyUtxos } = await getAvailableUtxosWithoutInscription({
+            address,
+            price: utxo.value,
+        });
 
-      if (_dummyUtxos.length < 2) {
-            throw new Error("No dummy UTXOs found. Please create them before continuing.");
-      }
+        if (_dummyUtxos.length < 2) {
+            throw new Error('No dummy UTXOs found. Please create them before continuing.');
+        }
 
-      setSelectedUtxos(_selectedUtxos);
-      setDummyUtxos(_dummyUtxos);
-   } catch (e) {
-      setSelectedUtxos([]);
-      throw e;
-   }
+        setSelectedUtxos(_selectedUtxos);
+        setDummyUtxos(_dummyUtxos);
+    } catch (e) {
+        setSelectedUtxos([]);
+        throw e;
+    }
 };
 
- const buy = async () => {
-   try {
-      await updatePayerAddress(destinationBtcAddress);
-   } catch (e) {
-      setIsBtcInputAddressValid(false);
-      toast.error(e.message);
-      return;
-   }
+const buy = async () => {
+    try {
+        await updatePayerAddress(destinationBtcAddress);
+    } catch (e) {
+        setIsBtcInputAddressValid(false);
+        toast.error(e.message);
+        return;
+    }
 
-   try {
-      const sellerSignedPsbt = bitcoin.Psbt.fromBase64(nostr.content, { network: NETWORK });
+    try {
+        const sellerSignedPsbt = bitcoin.Psbt.fromBase64(nostr.content, { network: NETWORK });
 
-      const psbt = await generatePSBTListingInscriptionForBuy({
+        const psbt = await generatePSBTListingInscriptionForBuy({
             payerAddress: destinationBtcAddress,
             receiverAddress: destinationBtcAddress,
             price: nostr.value,
@@ -284,22 +421,16 @@ const updatePayerAddress = async (address) => {
             dummyUtxos,
             sellerSignedPsbt,
             inscription: utxo,
-      });
+        });
 
-      const tx = await signPsbtMessage(psbt);
-      const txId = await broadcastTx(tx);
-   } catch (e) {
-      toast.error(e.message);
-   }
+        const tx = await signPsbtMessage(psbt);
+        const txId = await broadcastTx(tx);
+    } catch (e) {
+        toast.error(e.message);
+    }
 };
 ```
 
 ## License
 
-Public domain.
-
-````
-
-```
-
-```
+# Public domain.
