@@ -1,11 +1,12 @@
-import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371';
+import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371.js';
 import { ethers } from 'ethers';
 
 import { ECPairFactory } from 'ecpair';
 import { BIP32Factory } from 'bip32';
 import * as bitcoin from 'bitcoinjs-lib';
-// eslint-disable-next-line
-const ecc = require('tiny-secp256k1');
+
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
 import axios from 'axios';
 import { Crypto } from './crypto';
@@ -22,6 +23,7 @@ const Psbt = function (config) {
 
     const psbtModule = {
         getMetamaskSigner: (metamaskDomain) => async () => {
+            // @ts-ignore
             const { ethereum } = window;
             let ethAddress = ethereum.selectedAddress;
 
@@ -30,6 +32,7 @@ const Psbt = function (config) {
                 ethAddress = ethereum.selectedAddress;
             }
 
+            // @ts-ignore
             const provider = new ethers.providers.Web3Provider(window.ethereum);
             const toSign = `0x${Buffer.from(config.TAPROOT_MESSAGE(metamaskDomain)).toString('hex')}`;
             const signature = await provider.send('personal_sign', [toSign, ethAddress]);
@@ -50,6 +53,7 @@ const Psbt = function (config) {
         },
 
         signNostr: (sigHash) => async () => {
+            // @ts-ignore
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 

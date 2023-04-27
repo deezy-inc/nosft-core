@@ -1,16 +1,20 @@
 {
     "compilerOptions": {
-        "module": "esnext",
         "target": "esnext",
-        "lib": ["dom", "dom.iterable", "esnext"],
+        "module": "esnext",
+        "outDir": "./lib",
         "declaration": true,
+        "rootDir": "./src",
+        "types": ["node"],
+        "allowJs": false,
         "strict": true,
-        "moduleResolution": "node",
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-        "emitDeclarationOnly": true,
-        "outDir": "lib",
-        "rootDir": ".",
-        "noImplicitAny": false
-    }
+        "esModuleInterop": false,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitAny": false,
+        "moduleResolution": "nodenext",
+        "allowSyntheticDefaultImports": true
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["**/*.spec.ts", "node_modules/**/*"]
 }

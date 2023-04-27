@@ -1,10 +1,12 @@
+import { Config } from '../config/config';
+
 import * as bitcoin from 'bitcoinjs-lib';
-// eslint-disable-next-line
-const ecc = require('tiny-secp256k1');
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
 
 bitcoin.initEccLib(ecc);
 
-const Address = function (config) {
+const Address = function (config: Config) {
     const addressModule = {
         getAddressInfo: (publicKey) => {
             console.log(`Pubkey: ${publicKey.toString()}`);

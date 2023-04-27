@@ -1,12 +1,12 @@
-import { Address } from './src/app/address';
-import { Wallet } from './src/app/wallet';
-import { Crypto } from './src/app/crypto';
-import { Inscriptions } from './src/app/inscriptions';
-import { Utxo } from './src/app/utxo';
-import { Config } from './src/config/config';
-import { Psbt } from './src/app/psbt';
-import { OpenOrdex } from './src/app/openOrdex';
-import { Nostr } from './src/app/nostr';
+import { Address } from './app/address';
+import { Wallet } from './app/wallet';
+import { Crypto } from './app/crypto';
+import { Inscriptions } from './app/inscriptions';
+import { Utxo } from './app/utxo';
+import { Config } from './config/config';
+import { Psbt } from './app/psbt';
+import { OpenOrdex } from './app/openOrdex';
+import { Nostr } from './app/nostr';
 
 const Nosft = (configOverrides = {}) => {
     const config = new Config(configOverrides);

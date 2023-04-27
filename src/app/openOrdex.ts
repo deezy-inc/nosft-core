@@ -2,8 +2,8 @@
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
-// eslint-disable-next-line
-const ecc = require('tiny-secp256k1');
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
 
 bitcoin.initEccLib(ecc);
 
