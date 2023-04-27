@@ -1,8 +1,8 @@
-const bitcoin = require('bitcoinjs-lib');
-// eslint-disable-next-line
-const ecc = require('tiny-secp256k1');
+import * as bitcoin from 'bitcoinjs-lib';
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
 
-const ECPairFactory = require('ecpair').ECPairFactory;
+import { ECPairFactory } from 'ecpair';
 
 bitcoin.initEccLib(ecc);
 

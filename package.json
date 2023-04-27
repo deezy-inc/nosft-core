@@ -1,6 +1,6 @@
 {
-    "name": "nosft-core-ajs",
-    "version": "1.0.4",
+    "name": "nosft-core",
+    "version": "1.0.5",
     "engines": {
         "node": ">=18.0.0"
     },
@@ -36,6 +36,9 @@
         "nostr-tools": "1.10.1",
         "tiny-secp256k1": "^2.2.1",
         "varuint-bitcoin": "^1.1.2"
+    },
+    "resolutions": {
+        "tiny-secp256k1": "^2.2.1"
     },
     "keywords": [],
     "devDependencies": {

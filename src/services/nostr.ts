@@ -98,6 +98,7 @@ class NostrRelay {
                 sig: signature.toString('hex'),
             };
         }
+        // @ts-ignore
         return window.nostr.signEvent(newEvent);
     }
 }

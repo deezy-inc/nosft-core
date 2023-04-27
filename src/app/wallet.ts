@@ -1,6 +1,6 @@
-const bitcoin = require('bitcoinjs-lib');
-// eslint-disable-next-line
-const ecc = require('tiny-secp256k1');
+import * as bitcoin from 'bitcoinjs-lib';
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
 import { ethers } from 'ethers';
 import { BIP32Factory } from 'bip32';
 import { Crypto } from './crypto';
@@ -14,6 +14,7 @@ const Wallet = function (config) {
     const cryptoModule = Crypto(config);
     const walletModule = {
         connectWallet: async (metamask) => {
+            // @ts-ignore
             const { ethereum } = window;
 
             if (ethereum && metamask) {
@@ -22,6 +23,7 @@ const Wallet = function (config) {
                     await ethereum.request({ method: 'eth_requestAccounts' });
                     ethAddress = ethereum.selectedAddress;
                 }
+                // @ts-ignore
                 const provider = new ethers.providers.Web3Provider(window.ethereum);
 
                 const toSign = `0x${Buffer.from(config.TAPROOT_MESSAGE(metamask)).toString('hex')}`;
@@ -35,7 +37,9 @@ const Wallet = function (config) {
                 return taprootAddress?.pubkey?.toString('hex');
             }
 
+            // @ts-ignore
             if (window.nostr && window.nostr.enable) {
+                // @ts-ignore
                 await window.nostr.enable();
             } else {
                 throw new Error(
@@ -43,6 +47,7 @@ const Wallet = function (config) {
                         'Go to your Alby Account Settings and create or import a Nostr key.'
                 );
             }
+            // @ts-ignore
             return window.nostr.getPublicKey();
         },
     };

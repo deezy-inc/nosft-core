@@ -60,7 +60,7 @@ const wasmPlugin = {
 };
 
 let common = {
-    entryPoints: ['index.ts'],
+    entryPoints: ['src/index.ts'],
     bundle: true,
     sourcemap: 'external',
 };
