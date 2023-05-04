@@ -77,7 +77,7 @@ const Utxo = function (config) {
         },
 
         doesUtxoContainInscription: async (utxo) => {
-            const html = await fetch(`${config.ORDINALS_EXPLORER_URL_LEGACY}/output/${utxo.txid}:${utxo.vout}`).then(
+            const html = await fetch(`${config.ORDINALS_EXPLORER_URL}/output/${utxo.txid}:${utxo.vout}`).then(
                 (response) => response.text()
             );
 
