@@ -21,8 +21,8 @@ const OpenOrdex = function (config) {
         },
 
         getInscriptionDataById: async (inscriptionId, verifyIsInscriptionNumber?) => {
-            const html = await fetch(`${config.ORDINALS_EXPLORER_URL_LEGACY}/inscription/${inscriptionId}`).then(
-                (response) => response.text()
+            const html = await fetch(`${config.ORDINALS_EXPLORER_URL}/inscription/${inscriptionId}`).then((response) =>
+                response.text()
             );
 
             // Refactor the map to not reassign x[2]
@@ -53,6 +53,7 @@ const OpenOrdex = function (config) {
 
             return data;
         },
+
         validatePbst: (psbt, utxo) => {
             const sellerInput = psbt.txInputs[0];
             const sellerSignedPsbtInput = `${sellerInput.hash.reverse().toString('hex')}:${sellerInput.index}`;
