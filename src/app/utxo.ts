@@ -1,5 +1,6 @@
 import axios from 'axios';
 import LocalStorage, { LocalStorageKeys } from '../services/local-storage';
+import { SpentResponse } from '../types/inscriptions';
 
 const Utxo = function (config) {
     const utxoModule = {
@@ -90,6 +91,24 @@ const Utxo = function (config) {
             );
 
             return html.match(/class=thumbnails/) !== null;
+        },
+        isSpent: async (utxo) => {
+            const [txid, vout] = utxo.output.split(':');
+            const {
+                data: { spent, ...props },
+            } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}/outspend/${vout}`);
+
+            const isSpent: SpentResponse = {
+                ...props,
+                spent,
+            };
+
+            if (!spent) return isSpent;
+
+            const { data: last_lock_height } = await axios.get(`${config.MEMPOOL_API_URL}/api/blocks/tip/height`);
+            const confirmations = last_lock_height - props.status.block_height;
+            isSpent.confirmations = confirmations;
+            return isSpent;
         },
     };
 
