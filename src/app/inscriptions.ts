@@ -17,7 +17,11 @@ const Inscriptions = function (config) {
 
             const result = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}/outpoint`);
 
+            const [txid, vout] = cryptoModule.parseOutpoint(result.data.inscription.outpoint);
+            const utxoKey = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${txid}:${vout}`;
+
             await LocalStorage.set(key, result.data);
+            await LocalStorage.set(utxoKey, result.data);
 
             return result.data;
         },
@@ -86,7 +90,7 @@ const Inscriptions = function (config) {
 
             const [txid, vout] = cryptoModule.parseOutpoint(outpoint);
             // Get related transaction
-            const { data: utxo } = await axios.get(`${config.POOL_API_URL}/api/tx/${txid}`);
+            const { data: utxo } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}`);
 
             // get value of the utxo
             const { value } = utxo.vout[vout];
@@ -106,6 +110,13 @@ const Inscriptions = function (config) {
 
             return props;
         },
+
+        isTextInscription: (utxo) => /(text\/plain|application\/json)/.test(utxo?.content_type),
+        isImageInscription: (utxo) => /(^image)(\/)[a-zA-Z0-9_]*/gm.test(utxo?.content_type),
+        shouldReplaceInscription: (existingInscription, newInscription) =>
+            existingInscription.value > newInscription.value ||
+            (existingInscription.value === newInscription.value &&
+                existingInscription.created_at < newInscription.created_at),
     };
 
     return inscriptionsModule;

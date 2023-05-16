@@ -81,7 +81,7 @@ const Psbt = function (config) {
             };
         },
 
-        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output }) => {
+        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output }: any) => {
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             // Input
             const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo });
@@ -138,6 +138,39 @@ const Psbt = function (config) {
                 // Send it!
                 return psbtModule.broadcastPsbt(psbt);
             },
+
+        createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const psbt = psbtModule.createPsbt({
+                utxo,
+                inputAddressInfo,
+                destinationBtcAddress,
+                output: config.BOOST_UTXO_VALUE,
+            });
+
+            // @ts-ignore
+            const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
+                0,
+                [inputAddressInfo.output],
+                [utxo.value],
+                // eslint-disable-next-line no-bitwise
+                bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY
+            );
+
+            const signed = await psbtModule.signSigHash({ sigHash });
+
+            psbt.updateInput(0, {
+                // @ts-ignore
+                tapKeySig: serializeTaprootSignature(Buffer.from(signed, 'hex'), [
+                    // @ts-ignore
+                    bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
+                ]),
+            });
+
+            // Finalize the PSBT. Note that the transaction will not be broadcast to the Bitcoin network yet.
+            psbt.finalizeAllInputs();
+            return psbt.toHex();
+        },
 
         signPsbtMessage: (message) => async () => {
             const virtualToSign = bitcoin.Psbt.fromBase64(message);

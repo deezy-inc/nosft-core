@@ -42,7 +42,7 @@ const Nostr = function (config: Config) {
         getEvent: ({
             inscriptionId,
             inscriptionUtxo,
-            networkName = 'mainnet',
+            networkName = config.TESTNET ? 'testnet' : 'mainnet',
             priceInSats,
             signedPsbt,
             type = 'sell',
@@ -69,13 +69,7 @@ const Nostr = function (config: Config) {
             return event;
         },
 
-        subscribeOrders: ({
-            callback,
-            limit = config.MAX_ONSALE,
-        }: {
-            callback: (err, data: any) => {};
-            limit: number;
-        }) => {
+        subscribeOrders: ({ callback, limit = 5 }: { callback: (err, data: any) => {}; limit: number }) => {
             return nostrPool.subscribe(
                 [{ kinds: [config.NOSTR_KIND_INSCRIPTION], limit }],
                 async (event) => {

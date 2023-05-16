@@ -1,4 +1,5 @@
 import axios from 'axios';
+import LocalStorage, { LocalStorageKeys } from '../services/local-storage';
 
 const Utxo = function (config) {
     const utxoModule = {
@@ -6,7 +7,7 @@ const Utxo = function (config) {
         delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
         getAddressUtxosFromApi: async (address) => {
-            const url = `${config.POOL_API_URL}/api/address/${address}/utxo`;
+            const url = `${config.MEMPOOL_API_URL}/api/address/${address}/utxo`;
             const resp = await axios.get(url);
             const utxos = resp.data.map((tx) => ({
                 txid: tx.txid,
@@ -28,7 +29,7 @@ const Utxo = function (config) {
                 // eslint-disable-next-line no-await-in-loop
                 await utxoModule.delay(100);
 
-                const url = `${config.POOL_API_URL}/api/address/${address}/txs${
+                const url = `${config.MEMPOOL_API_URL}/api/address/${address}/txs${
                     lastSeenTxId ? `/chain/${lastSeenTxId}` : ''
                 }`;
                 // eslint-disable-next-line no-await-in-loop
@@ -77,6 +78,13 @@ const Utxo = function (config) {
         },
 
         doesUtxoContainInscription: async (utxo) => {
+            const key = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${utxo.txid}:${utxo.vout}`;
+            const cachedOutpoint = await LocalStorage.get(key);
+            const outpoint = Boolean(cachedOutpoint);
+            if (outpoint) {
+                return true;
+            }
+
             const html = await fetch(`${config.ORDINALS_EXPLORER_URL}/output/${utxo.txid}:${utxo.vout}`).then(
                 (response) => response.text()
             );
