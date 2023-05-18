@@ -172,7 +172,7 @@ const Psbt = function (config) {
             return psbt.toHex();
         },
 
-        signPsbtMessage: (message) => async () => {
+        signPsbtMessage: async (message) => {
             const virtualToSign = bitcoin.Psbt.fromBase64(message);
             // if only 1 input, then this is a PSBT listing
             if (virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) {
