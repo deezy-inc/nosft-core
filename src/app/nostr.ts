@@ -69,9 +69,18 @@ const Nostr = function (config: Config) {
             return event;
         },
 
-        subscribeOrders: ({ callback, limit = 5 }: { callback: (err, data: any) => {}; limit: number }) => {
+        subscribeOrders: ({
+            callback,
+            limit = 5,
+            filter = {},
+        }: {
+            callback: (err, data: any) => void;
+            limit: number;
+            filter: any;
+        }) => {
+            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
             return nostrPool.subscribe(
-                [{ kinds: [config.NOSTR_KIND_INSCRIPTION], limit }],
+                [nostrFilter],
                 async (event) => {
                     console.log('event', event);
                     try {
