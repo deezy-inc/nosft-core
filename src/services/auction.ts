@@ -6,16 +6,16 @@ import { Config } from '../config/config';
 export interface AuctionMetadata {
     price: number;
     scheduledTime: number;
+    nostrEventId: string;
 }
 export interface AuctionInscription {
-    utxo: {
-        inscriptionId: string;
-    };
+    inscriptionId: string;
     endDate?: number;
     metadata: Array<AuctionMetadata>;
     next?: AuctionMetadata;
     current?: AuctionMetadata;
     currentPrice: number;
+    status: 'RUNNING' | 'FINISHED';
 }
 
 class Auction extends ApiService {
@@ -36,6 +36,10 @@ class Auction extends ApiService {
 
     public async getInscription(inscriptionId): Promise<Array<AuctionInscription>> {
         return this.get(`/inscription/${inscriptionId}`);
+    }
+
+    public async create(auction: AuctionInscription): Promise<void> {
+        return this.post(`/create`, auction);
     }
 }
 
