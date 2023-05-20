@@ -23,7 +23,7 @@ const Auction = function (config: Config) {
                     callback(error);
                 }
 
-                const auction = inscriptions.find((i) => i.utxo.inscriptionId === order.inscriptionId);
+                const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
                 if (auction) {
                     auction.endDate = getAuctionEndDate(auction);
                     // If endDate is negative, it means the auction has ended
@@ -34,10 +34,20 @@ const Auction = function (config: Config) {
 
                 callback(undefined, { ...order, auction });
             };
+
+            // Display only running inscriptions
+            const metadata = inscriptions
+                .filter((i) => i.status === 'RUNNING')
+                .reduce((acc: Array<string>, i) => {
+                    const events = i.metadata.map((m) => m.nostrEventId);
+                    return acc.concat(...events);
+                }, []);
+
+            // Get specific auction events!
             return nostrModule.subscribeOrders({
                 callback: cb,
                 limit,
-                filter: { '#i': inscriptions.map((i) => i.utxo.inscriptionId) },
+                filter: { ids: metadata },
             });
         },
 
@@ -46,10 +56,13 @@ const Auction = function (config: Config) {
 
             return auctions?.map((auction) => {
                 auction.endDate = getAuctionEndDate(auction);
-                auction.next = getNextMetadata(auction);
-                auction.current = auction.metadata.find((meta) => meta.price === auction.currentPrice);
+                auction.next = getNextMetadata(auction); // There might not be a next event if is the last
                 return auction;
             });
+        },
+
+        createAuction: async (auction: AuctionInscription) => {
+            return auctionService.create(auction);
         },
     };
 
