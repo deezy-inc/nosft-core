@@ -22,7 +22,7 @@ const Psbt = function (config) {
     const cryptoModule = Crypto(config);
 
     const psbtModule = {
-        getMetamaskSigner: (metamaskDomain) => async () => {
+        getMetamaskSigner: async (metamaskDomain) => {
             // @ts-ignore
             const { ethereum } = window;
             let ethAddress = ethereum.selectedAddress;
@@ -46,28 +46,26 @@ const Psbt = function (config) {
             return cryptoModule.tweakSigner(keyPair);
         },
 
-        signMetamask: (sigHash, metamaskDomain) => async () => {
+        signMetamask: async (sigHash, metamaskDomain) => {
             const tweakedSigner = await psbtModule.getMetamaskSigner(metamaskDomain);
             // @ts-ignore
             return tweakedSigner.signSchnorr(sigHash);
         },
 
-        signNostr: (sigHash) => async () => {
+        signNostr: (sigHash) => {
             // @ts-ignore
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 
-        signSigHash:
-            ({ sigHash }) =>
-            async () => {
-                const metamaskDomain = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+        signSigHash: ({ sigHash }) => {
+            const metamaskDomain = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
-                if (metamaskDomain) {
-                    return psbtModule.signMetamask(sigHash, metamaskDomain);
-                }
+            if (metamaskDomain) {
+                return psbtModule.signMetamask(sigHash, metamaskDomain);
+            }
 
-                return psbtModule.signNostr(sigHash);
-            },
+            return psbtModule.signNostr(sigHash);
+        },
 
         getInputParams: ({ utxo, inputAddressInfo }) => {
             return {
@@ -97,7 +95,7 @@ const Psbt = function (config) {
             return psbt;
         },
 
-        broadcastTx: (tx) => async () => {
+        broadcastTx: async (tx) => {
             const hex = tx.toBuffer().toString('hex');
             const fullTx = bitcoin.Transaction.fromHex(hex);
             await axios.post(`https://mempool.space/api/tx`, hex);
@@ -105,39 +103,37 @@ const Psbt = function (config) {
             return fullTx.getId();
         },
 
-        broadcastPsbt: (psbt) => async () => {
+        broadcastPsbt: async (psbt) => {
             const tx = psbt.extractTransaction();
             return psbtModule.broadcastTx(tx);
         },
 
-        signAndBroadcastUtxo:
-            ({ pubKey, utxo, destinationBtcAddress, sendFeeRate }) =>
-            async () => {
-                const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+        signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate }) => {
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
 
+            // @ts-ignore
+            const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
+
+            // @ts-ignore
+            const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
+                0,
+                [inputAddressInfo.output],
+                [utxo.value],
+                bitcoin.Transaction.SIGHASH_DEFAULT
+            );
+
+            const signed = await psbtModule.signSigHash({ sigHash });
+
+            psbt.updateInput(0, {
                 // @ts-ignore
-                const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
+                tapKeySig: serializeTaprootSignature(Buffer.from(signed, 'hex')),
+            });
 
-                // @ts-ignore
-                const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
-                    0,
-                    [inputAddressInfo.output],
-                    [utxo.value],
-                    bitcoin.Transaction.SIGHASH_DEFAULT
-                );
-
-                const signed = await psbtModule.signSigHash({ sigHash });
-
-                psbt.updateInput(0, {
-                    // @ts-ignore
-                    tapKeySig: serializeTaprootSignature(Buffer.from(signed, 'hex')),
-                });
-
-                // Finalize the PSBT. Note that the transaction will not be broadcast to the Bitcoin network yet.
-                psbt.finalizeAllInputs();
-                // Send it!
-                return psbtModule.broadcastPsbt(psbt);
-            },
+            // Finalize the PSBT. Note that the transaction will not be broadcast to the Bitcoin network yet.
+            psbt.finalizeAllInputs();
+            // Send it!
+            return psbtModule.broadcastPsbt(psbt);
+        },
 
         createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
