@@ -217,6 +217,7 @@ const OpenOrdex = function (config) {
                 witnessUtxo: tx.outs[ordinalUtxoVout],
                 // eslint-disable-next-line no-bitwise
                 sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
+                sequence: 0xfffffffd,
             };
 
             psbt.addInput(input);

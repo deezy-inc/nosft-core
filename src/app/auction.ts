@@ -51,6 +51,48 @@ const Auction = function (config: Config) {
             });
         },
 
+        subscribeMyAuctions: async ({
+            callback,
+            address,
+            limit = 5,
+        }: {
+            callback: (err, data?: any) => void;
+            address: string;
+            limit: number;
+        }) => {
+            const inscriptions = await auctionService.getByAddress(address);
+
+            const cb = async (error, order) => {
+                if (error) {
+                    callback(error);
+                }
+
+                const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
+                if (auction) {
+                    auction.endDate = getAuctionEndDate(auction);
+                    // If endDate is negative, it means the auction has ended
+                    if (auction.endDate < 0) {
+                        callback(undefined, order);
+                    }
+                }
+
+                callback(undefined, { ...order, auction });
+            };
+
+            // Display only running inscriptions
+            const metadata = inscriptions.reduce((acc: Array<string>, i) => {
+                const events = i.metadata.map((m) => m.nostrEventId);
+                return acc.concat(...events);
+            }, []);
+
+            // Get specific auction events!
+            return nostrModule.subscribeOrders({
+                callback: cb,
+                limit,
+                filter: { ids: metadata },
+            });
+        },
+
         getAuctionByInscription: async (inscriptionId) => {
             const auctions: Array<AuctionInscription> = await auctionService.getInscription(inscriptionId);
 

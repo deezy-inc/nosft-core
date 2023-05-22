@@ -97,6 +97,22 @@ const Nostr = function (config: Config) {
             );
         },
 
+        listOrders: async ({ limit = 5, filter = {} }: { limit: number; filter: any }) => {
+            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
+            const orders = await nostrPool.list([nostrFilter]);
+
+            return orders
+                .map(async (order) => {
+                    try {
+                        const orderInfo = await ordexModule.getOrderInformation(order);
+                        return orderInfo;
+                    } catch (e) {
+                        return undefined;
+                    }
+                })
+                .filter((a) => a);
+        },
+
         unsubscribeOrders: () => {
             nostrPool.unsubscribeAll();
         },
