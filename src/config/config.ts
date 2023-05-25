@@ -26,6 +26,7 @@ import {
     DEEZY_BOOST_API,
     INSCRIBOR_URL,
     AUCTION_URL,
+    BITCOIN_BLOCK_AVG_API_URL,
 } from './constants';
 
 type ConfigOverrides = {
@@ -54,6 +55,7 @@ type ConfigOverrides = {
     DEEZY_BOOST_API?: string;
     INSCRIBOR_URL?: string;
     AUCTION_URL?: string;
+    BITCOIN_BLOCK_AVG_API_URL?: string;
 
     TAPROOT_MESSAGE?: (domain: string) => string;
 };
@@ -84,6 +86,7 @@ class Config {
     DEEZY_BOOST_API = DEEZY_BOOST_API;
     INSCRIBOR_URL = INSCRIBOR_URL;
     AUCTION_URL = AUCTION_URL;
+    BITCOIN_BLOCK_AVG_API_URL = BITCOIN_BLOCK_AVG_API_URL;
 
     TAPROOT_MESSAGE = (domain) =>
         `Sign this message to generate your Bitcoin Taproot key. This key will be used for your ${domain} transactions.`;
@@ -116,6 +119,7 @@ class Config {
         this.DEEZY_BOOST_API = configOverrides?.DEEZY_BOOST_API || DEEZY_BOOST_API;
         this.INSCRIBOR_URL = configOverrides?.INSCRIBOR_URL || INSCRIBOR_URL;
         this.AUCTION_URL = configOverrides?.AUCTION_URL || AUCTION_URL;
+        this.BITCOIN_BLOCK_AVG_API_URL = configOverrides?.BITCOIN_BLOCK_AVG_API_URL || BITCOIN_BLOCK_AVG_API_URL;
 
         if (configOverrides?.TAPROOT_MESSAGE) {
             this.TAPROOT_MESSAGE = configOverrides?.TAPROOT_MESSAGE;

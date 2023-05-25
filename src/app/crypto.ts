@@ -51,6 +51,7 @@ const Crypto = function (config) {
                 .then((response) => response.json())
                 .then((data) => data.USD.last),
 
+        fetchBlockAverage: async () => fetch(config.BITCOIN_BLOCK_AVG_API_URL).then((response) => response.text()),
         fetchRecommendedFee: async () =>
             fetch(`${config.MEMPOOL_API_URL}/api/v1/fees/recommended`)
                 .then((response) => response.json())
@@ -120,13 +121,8 @@ const Crypto = function (config) {
                 .reverse()
                 .join('');
 
-            const buf = new ArrayBuffer(4);
-            const view = new DataView(buf);
-            rawVout.match(/../g).forEach((b, i) => {
-                view.setUint8(i, parseInt(b, 16));
-            });
+            const vout = parseInt(rawVout, 16);
 
-            const vout = view.getInt32(0, true);
             return [txid, vout];
         },
 

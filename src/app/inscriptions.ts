@@ -9,33 +9,43 @@ const Inscriptions = function (config) {
     const inscriptionsModule = {
         // TODO: Implement also some type of server side caching.
         getOutpointFromCache: async (inscriptionId) => {
-            const key = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${inscriptionId}`;
-            const cachedOutpoint = await LocalStorage.get(key);
-            if (cachedOutpoint) {
-                return cachedOutpoint;
+            try {
+                const key = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${inscriptionId}`;
+                const cachedOutpoint = await LocalStorage.get(key);
+                if (cachedOutpoint) {
+                    return cachedOutpoint;
+                }
+
+                const result = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}/outpoint`);
+
+                const [txid, vout] = cryptoModule.parseOutpoint(result.data.inscription.outpoint);
+                const utxoKey = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${txid}:${vout}`;
+
+                await LocalStorage.set(key, result.data);
+                await LocalStorage.set(utxoKey, result.data);
+
+                return result.data;
+            } catch (error) {
+                console.error(error);
             }
 
-            const result = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}/outpoint`);
-
-            const [txid, vout] = cryptoModule.parseOutpoint(result.data.inscription.outpoint);
-            const utxoKey = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${txid}:${vout}`;
-
-            await LocalStorage.set(key, result.data);
-            await LocalStorage.set(utxoKey, result.data);
-
-            return result.data;
+            return undefined;
         },
 
         getInscriptionsByUtxoKey: async (inscriptions) => {
             const inscriptionsByUtxoKey = {};
             const batchPromises = [];
             const populateInscriptionsMap = async (ins) => {
-                const {
-                    inscription: { outpoint },
-                } = await inscriptionsModule.getOutpointFromCache(ins.id);
-                const [txid, vout] = cryptoModule.parseOutpoint(outpoint);
+                const outpointData = await inscriptionsModule.getOutpointFromCache(ins.id);
+                if (outpointData) {
+                    const {
+                        inscription: { outpoint },
+                    } = outpointData;
+                    const [txid, vout] = cryptoModule.parseOutpoint(outpoint);
 
-                inscriptionsByUtxoKey[`${txid}:${vout}`] = ins;
+                    inscriptionsByUtxoKey[`${txid}:${vout}`] = ins;
+                }
+
                 return inscriptionsByUtxoKey;
             };
 
