@@ -1,6 +1,6 @@
 import * as bitcoin from 'bitcoinjs-lib';
 
-export const TESTNET = false;
+export const TESTNET = true;
 
 export const NOSTR_RELAY_URL = 'wss://nostr.openordex.org';
 export const NOSTR_KIND_INSCRIPTION = TESTNET ? 1802 : 802; // 1802 for testnet, 802 for mainnet

@@ -4,6 +4,7 @@ import * as ecc from 'tiny-secp256k1';
 import { ethers } from 'ethers';
 import { BIP32Factory } from 'bip32';
 import { Crypto } from './crypto';
+import { NETWORK } from '../config/constants';
 
 bitcoin.initEccLib(ecc);
 const bip32 = BIP32Factory(ecc);
@@ -33,6 +34,7 @@ const Wallet = function (config) {
                 const taprootChild = root.derivePath(config.DEFAULT_DERIV_PATH);
                 const taprootAddress = bitcoin.payments.p2tr({
                     internalPubkey: cryptoModule.toXOnly(taprootChild.publicKey),
+                    network: NETWORK,
                 });
                 return taprootAddress?.pubkey?.toString('hex');
             }
