@@ -2,7 +2,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 
 export const TESTNET = false;
 
-export const NOSTR_RELAY_URL = 'wss://nostr.openordex.org';
+export const NOSTR_RELAY_URL = 'wss://relay.deezy.io';
 export const NOSTR_KIND_INSCRIPTION = TESTNET ? 1802 : 802; // 1802 for testnet, 802 for mainnet
 export const INSCRIPTION_SEARCH_DEPTH = 5;
 export const GITHUB_URL = 'https://github.cosm/dannydeezy/nosft';
@@ -31,7 +31,7 @@ export const BOOST_UTXO_VALUE = 10000;
 export const FEE_LEVEL = 'hourFee'; // "fastestFee" || "halfHourFee" || "hourFee" || "economyFee" || "minimumFee"
 export const DEEZY_BOOST_API = `https://api${TESTNET ? '-testnet' : ''}.deezy.io/v1/boost`;
 export const INSCRIBOR_URL = TESTNET ? 'https://testnet.inscribor.com' : 'https://inscribor.com';
-export const AUCTION_URL = 'https://37qnx0shxl.execute-api.us-east-1.amazonaws.com/dev/';
+export const AUCTION_URL = 'https://ef47ptri6c.execute-api.us-east-1.amazonaws.com/dev/v1';
 export const CONSTANTS = {
     TESTNET,
     NOSTR_RELAY_URL,

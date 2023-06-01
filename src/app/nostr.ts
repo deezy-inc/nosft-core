@@ -39,6 +39,36 @@ const Nostr = function (config: Config) {
             return undefined;
         },
 
+        getNostrInscriptionByEventId: async (eventId) => {
+            const orders = (
+                await nostrPool.list([
+                    {
+                        kinds: [config.NOSTR_KIND_INSCRIPTION],
+                        ids: [eventId],
+                    },
+                ])
+            )
+                .filter((a) => a.tags.find((x) => x?.[0] === 's')?.[1])
+                .sort(
+                    (a, b) =>
+                        // @ts-ignore
+                        Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
+                );
+
+            for (const order of orders) {
+                try {
+                    const orderInformation = await ordexModule.getOrderInformation(order);
+                    // @ts-ignore
+                    if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
+                        return orderInformation;
+                    }
+                } catch (e) {
+                    return undefined;
+                }
+            }
+            return undefined;
+        },
+
         getEvent: ({
             inscriptionId,
             inscriptionUtxo,
