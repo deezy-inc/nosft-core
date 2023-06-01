@@ -2,7 +2,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 
 export const TESTNET = false;
 
-export const NOSTR_RELAY_URL = 'wss://nostr.openordex.org';
+export const NOSTR_RELAY_URL = 'wss://relay.deezy.io';
 export const NOSTR_KIND_INSCRIPTION = TESTNET ? 1802 : 802; // 1802 for testnet, 802 for mainnet
 export const INSCRIPTION_SEARCH_DEPTH = 5;
 export const GITHUB_URL = 'https://github.cosm/dannydeezy/nosft';
@@ -13,7 +13,13 @@ export const ASSUMED_TX_BYTES = 111;
 export const ORDINALS_EXPLORER_URL = TESTNET
     ? 'https://ordinals-api-testnet.deezy.io'
     : 'https://ordinals-api.deezy.io';
-export const RELAYS = [NOSTR_RELAY_URL];
+
+export const RELAYS = [
+    NOSTR_RELAY_URL,
+    'wss://relay.damus.io',
+    'wss://nostr-pub.wellorder.net',
+    'wss://nostr.bitcoiner.social',
+];
 export const BITCOIN_PRICE_API_URL = 'https://blockchain.info/ticker?cors=true';
 export const BITCOIN_BLOCK_AVG_API_URL = 'https://blockchain.info/q/interval?cors=true';
 export const TURBO_API = TESTNET ? 'https://turbo-ordinals-testnet.deezy.io' : 'https://turbo-ordinals.deezy.io';
