@@ -35,11 +35,15 @@ class Auction extends ApiService {
     }
 
     public async getInscription(inscriptionId): Promise<Array<AuctionInscription>> {
-        return this.get(`/inscription/${inscriptionId}`);
+        return this.get(`/auctions/inscription/${inscriptionId}`);
+    }
+
+    public async cancelAuction(auctionId): Promise<void> {
+        return this.delete(`/auction/${auctionId}`);
     }
 
     public async create(auction: AuctionInscription): Promise<void> {
-        return this.post(`/create`, auction);
+        return this.post(`/auction`, auction);
     }
 
     public async getByAddress(address: string): Promise<Array<AuctionInscription>> {

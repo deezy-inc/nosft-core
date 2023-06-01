@@ -3,13 +3,17 @@ import { Nostr } from './nostr';
 import { AuctionInscription, auctionService as _auctionService } from '../services/auction';
 import { Config } from '../config/config';
 
-const getAuctionEndDate = (auction) => {
+const getAuctionTimeEventEnds = (auction) => {
     const currentEvent = auction.metadata.find((meta) => meta.price === auction.currentPrice);
-    return currentEvent.scheduledTime * 1000 + auction.timeBetweenEachDecrease * 1000;
+    if (currentEvent) {
+        return currentEvent.scheduledTime * 1000 + auction.timeBetweenEachDecrease * 1000;
+    }
+
+    return auction.startTime * 1000;
 };
 
 const getNextMetadata = (auction) => {
-    return auction.metadata.find((meta) => meta.price === auction.currentPrice - auction.decreaseAmount);
+    return auction.metadata.find((meta) => meta.price === auction?.currentPrice - auction.decreaseAmount);
 };
 
 const Auction = function (config: Config) {
@@ -25,7 +29,7 @@ const Auction = function (config: Config) {
 
                 const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
                 if (auction) {
-                    auction.endDate = getAuctionEndDate(auction);
+                    auction.endDate = getAuctionTimeEventEnds(auction);
                     // If endDate is negative, it means the auction has ended
                     if (auction.endDate < 0) {
                         callback(undefined, order);
@@ -69,7 +73,7 @@ const Auction = function (config: Config) {
 
                 const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
                 if (auction) {
-                    auction.endDate = getAuctionEndDate(auction);
+                    auction.endDate = getAuctionTimeEventEnds(auction);
                     // If endDate is negative, it means the auction has ended
                     if (auction.endDate < 0) {
                         callback(undefined, order);
@@ -97,7 +101,7 @@ const Auction = function (config: Config) {
             const auctions: Array<AuctionInscription> = await auctionService.getInscription(inscriptionId);
 
             return auctions?.map((auction) => {
-                auction.endDate = getAuctionEndDate(auction);
+                auction.endDate = getAuctionTimeEventEnds(auction);
                 auction.next = getNextMetadata(auction); // There might not be a next event if is the last
                 return auction;
             });
@@ -105,6 +109,10 @@ const Auction = function (config: Config) {
 
         createAuction: async (auction: AuctionInscription) => {
             return auctionService.create(auction);
+        },
+
+        cancelAuction: async (auctionId: string) => {
+            return auctionService.cancelAuction(auctionId);
         },
     };
 

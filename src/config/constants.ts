@@ -37,7 +37,7 @@ export const BOOST_UTXO_VALUE = 10000;
 export const FEE_LEVEL = 'hourFee'; // "fastestFee" || "halfHourFee" || "hourFee" || "economyFee" || "minimumFee"
 export const DEEZY_BOOST_API = `https://api${TESTNET ? '-testnet' : ''}.deezy.io/v1/boost`;
 export const INSCRIBOR_URL = TESTNET ? 'https://testnet.inscribor.com' : 'https://inscribor.com';
-export const AUCTION_URL = 'https://37qnx0shxl.execute-api.us-east-1.amazonaws.com/dev/';
+export const AUCTION_URL = 'https://ef47ptri6c.execute-api.us-east-1.amazonaws.com/dev/v1';
 export const CONSTANTS = {
     TESTNET,
     NOSTR_RELAY_URL,
