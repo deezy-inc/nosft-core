@@ -73,18 +73,7 @@ const Psbt = function (config) {
 
         getInputParams: ({ utxo, inputAddressInfo }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-            if (provider === 'unisat.io') {
-                return {
-                    hash: utxo.txid,
-                    index: utxo.vout,
-                    witnessUtxo: {
-                        value: utxo.value,
-                        script: Buffer.from(inputAddressInfo.output, 'hex'),
-                    },
-                    tapInternalKey: inputAddressInfo.internalPubkey,
-                    sequence: 0xfffffffd,
-                };
-            }
+            const pubKey = provider === 'unisat.io' ? inputAddressInfo.internalPubkey : inputAddressInfo.pubkey;
 
             return {
                 hash: utxo.txid,
@@ -93,7 +82,7 @@ const Psbt = function (config) {
                     value: utxo.value,
                     script: Buffer.from(inputAddressInfo.output, 'hex'),
                 },
-                tapInternalKey: inputAddressInfo.pubkey,
+                tapInternalKey: pubKey,
                 sequence: 0xfffffffd,
             };
         },
