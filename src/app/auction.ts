@@ -1,20 +1,7 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop */
 import { Nostr } from './nostr';
-import { AuctionInscription, auctionService as _auctionService } from '../services/auction';
+import { AuctionInput, auctionService as _auctionService } from '../services/auction';
 import { Config } from '../config/config';
-
-const getAuctionTimeEventEnds = (auction) => {
-    const currentEvent = auction.metadata.find((meta) => meta.price === auction.currentPrice);
-    if (currentEvent) {
-        return currentEvent.scheduledTime * 1000 + auction.timeBetweenEachDecrease * 1000;
-    }
-
-    return auction.startTime * 1000;
-};
-
-const getNextMetadata = (auction) => {
-    return auction.metadata.find((meta) => meta.price === auction?.currentPrice - auction.decreaseAmount);
-};
 
 const Auction = function (config: Config) {
     const nostrModule = Nostr(config);
@@ -28,13 +15,6 @@ const Auction = function (config: Config) {
                 }
 
                 const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
-                if (auction) {
-                    auction.endDate = getAuctionTimeEventEnds(auction);
-                    // If endDate is negative, it means the auction has ended
-                    if (auction.endDate < 0) {
-                        callback(undefined, order);
-                    }
-                }
 
                 callback(undefined, { ...order, auction });
             };
@@ -43,7 +23,7 @@ const Auction = function (config: Config) {
             const metadata = inscriptions
                 .filter((i) => i.status === 'RUNNING')
                 .reduce((acc: Array<string>, i) => {
-                    const events = i.metadata.map((m) => m.nostrEventId);
+                    const events = i.metadata.filter((m) => m.nostrEventId).map((m) => m.nostrEventId || '');
                     return acc.concat(...events);
                 }, []);
 
@@ -72,20 +52,13 @@ const Auction = function (config: Config) {
                 }
 
                 const auction = inscriptions.find((i) => i.inscriptionId === order.inscriptionId);
-                if (auction) {
-                    auction.endDate = getAuctionTimeEventEnds(auction);
-                    // If endDate is negative, it means the auction has ended
-                    if (auction.endDate < 0) {
-                        callback(undefined, order);
-                    }
-                }
 
                 callback(undefined, { ...order, auction });
             };
 
             // Display only running inscriptions
             const metadata = inscriptions.reduce((acc: Array<string>, i) => {
-                const events = i.metadata.map((m) => m.nostrEventId);
+                const events = i.metadata.filter((m) => m.nostrEventId).map((m) => m.nostrEventId || '');
                 return acc.concat(...events);
             }, []);
 
@@ -98,16 +71,11 @@ const Auction = function (config: Config) {
         },
 
         getAuctionByInscription: async (inscriptionId) => {
-            const auctions: Array<AuctionInscription> = await auctionService.getInscription(inscriptionId);
-
-            return auctions?.map((auction) => {
-                auction.endDate = getAuctionTimeEventEnds(auction);
-                auction.next = getNextMetadata(auction); // There might not be a next event if is the last
-                return auction;
-            });
+            const auctions = await auctionService.getInscription(inscriptionId);
+            return auctions;
         },
 
-        createAuction: async (auction: AuctionInscription) => {
+        createAuction: async (auction: AuctionInput) => {
             return auctionService.create(auction);
         },
 
