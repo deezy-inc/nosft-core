@@ -27,12 +27,41 @@ const Nostr = function (config: Config) {
                         // @ts-ignore
                         Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
                 );
-
             for (const order of orders) {
                 try {
                     const isUtxoSpent = await utxoModule.isSpent(inscription);
                     if (isUtxoSpent.spent) continue;
 
+                    const orderInformation = await ordexModule.getOrderInformation(order);
+                    // @ts-ignore
+                    if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
+                        return orderInformation;
+                    }
+                } catch (e) {
+                    return undefined;
+                }
+            }
+            return undefined;
+        },
+        getLatestNostrInscription: async (inscription) => {
+            const utxo = `${inscription.txid}:${inscription.vout}`;
+            const orders = (
+                await nostrPool.list([
+                    {
+                        kinds: [config.NOSTR_KIND_INSCRIPTION],
+                        '#u': [utxo],
+                    },
+                ])
+            )
+                .filter((a) => a.tags.find((x) => x?.[0] === 's')?.[1])
+                .sort(
+                    (b, a) =>
+                        // @ts-ignore
+                        Number(a.created_at) - Number(b.created_at)
+                );
+
+            for (const order of orders) {
+                try {
                     const orderInformation = await ordexModule.getOrderInformation(order);
                     // @ts-ignore
                     if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
