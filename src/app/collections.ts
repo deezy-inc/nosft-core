@@ -5,7 +5,7 @@ const Collection = function (config) {
     const collectionModule = {
         getCollection: async (slug) => {
             try {
-                const key = `${LocalStorageKeys.COLLECTION_INSCRIPTIONS}:${slug}`;
+                const key = `${LocalStorageKeys.COLLECTION_META}:${slug}`;
                 const cache = await LocalStorage.get(key);
                 if (cache) {
                     return cache;
