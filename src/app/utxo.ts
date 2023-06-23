@@ -103,12 +103,15 @@ const Utxo = function (config) {
                 spent,
             };
 
-            if (!spent) return isSpent;
-
-            const { data: last_lock_height } = await axios.get(`${config.MEMPOOL_API_URL}/api/blocks/tip/height`);
-            const confirmations = last_lock_height - props.status.block_height;
-            isSpent.confirmations = confirmations;
             return isSpent;
+
+            // disabled for now
+            // if (!spent) return isSpent;
+
+            // const { data: last_lock_height } = await axios.get(`${config.MEMPOOL_API_URL}/api/blocks/tip/height`);
+            // const confirmations = last_lock_height - props.status.block_height;
+            // isSpent.confirmations = confirmations;
+            // return isSpent;
         },
     };
 
