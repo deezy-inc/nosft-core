@@ -14,10 +14,11 @@ export const ORDINALS_EXPLORER_URL = TESTNET
     ? 'https://ordinals-api-testnet.deezy.io'
     : 'https://ordinals-api.deezy.io';
 export const RELAYS = [
-    'wss://relay.deezy.io',
-    'wss://relay.damus.io',
+    'wss://nostr.openordex.org',
+    NOSTR_RELAY_URL,
     'wss://nostr-pub.wellorder.net',
     'wss://nostr.bitcoiner.social',
+    'wss://relay.damus.io',
 ];
 export const BITCOIN_PRICE_API_URL = 'https://blockchain.info/ticker?cors=true';
 export const BITCOIN_BLOCK_AVG_API_URL = 'https://blockchain.info/q/interval?cors=true';
