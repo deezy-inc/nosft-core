@@ -71,37 +71,33 @@ const Psbt = function (config) {
             return psbtModule.signNostr(sigHash);
         },
 
-        getInputParams: ({ utxo, inputAddressInfo }) => {
+        getInputParams: ({ utxo, inputAddressInfo, sighashType }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-            if (provider === 'unisat.io') {
-                return {
-                    hash: utxo.txid,
-                    index: utxo.vout,
-                    witnessUtxo: {
-                        value: utxo.value,
-                        script: Buffer.from(inputAddressInfo.output, 'hex'),
-                    },
-                    tapInternalKey: inputAddressInfo.internalPubkey,
-                    sequence: 0xfffffffd,
-                };
-            }
+            const pubKey = provider === 'unisat.io' ? inputAddressInfo.internalPubkey : inputAddressInfo.pubkey;
 
-            return {
+            const params = {
                 hash: utxo.txid,
                 index: utxo.vout,
                 witnessUtxo: {
                     value: utxo.value,
                     script: Buffer.from(inputAddressInfo.output, 'hex'),
                 },
-                tapInternalKey: inputAddressInfo.pubkey,
+                tapInternalKey: pubKey,
                 sequence: 0xfffffffd,
             };
+
+            if (sighashType) {
+                // @ts-ignore
+                params.sighashType = sighashType;
+            }
+
+            return params;
         },
 
-        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output }: any) => {
+        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output, sighashType }: any) => {
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             // Input
-            const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo });
+            const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo, sighashType });
             psbt.addInput(inputParams);
 
             const psbtOutputValue = output || cryptoModule.outputValue(utxo, sendFeeRate);
@@ -171,12 +167,13 @@ const Psbt = function (config) {
             return psbtModule.broadcastPsbt(psbt);
         },
 
-        createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
+        createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, sighashType }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
                 destinationBtcAddress,
+                sighashType,
                 output: config.BOOST_UTXO_VALUE,
             });
 

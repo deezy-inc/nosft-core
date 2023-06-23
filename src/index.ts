@@ -8,6 +8,7 @@ import { Psbt } from './app/psbt';
 import { OpenOrdex } from './app/openOrdex';
 import { Nostr } from './app/nostr';
 import { Auction } from './app/auction';
+import { Collection } from './app/collections';
 
 const Nosft = (configOverrides = {}) => {
     const config = new Config(configOverrides);
@@ -21,6 +22,7 @@ const Nosft = (configOverrides = {}) => {
     const openOrdex = OpenOrdex(config);
     const nostr = Nostr(config);
     const auction = Auction(config);
+    const collection = Collection(config);
 
     return {
         wallet,
@@ -33,6 +35,7 @@ const Nosft = (configOverrides = {}) => {
         nostr,
         auction,
         config,
+        collection,
     };
 };
 
