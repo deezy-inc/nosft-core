@@ -1,22 +1,50 @@
-// import { DEEZY_API_URL, Network } from '../config/constants';
-
 import ApiService from '../utils/httpService';
 import { Config } from '../config/config';
 
+export type AuctionId = string;
+export type AuctionStatus = 'SPENT' | 'RUNNING' | 'PENDING' | 'FINISHED' | 'CLOSED' | 'STOPPED';
+
 export interface AuctionMetadata {
-    price: number;
     scheduledTime: number;
-    nostrEventId: string;
+    endTime: number;
+    id: string;
+    nostrEventId?: string;
+    price: number;
+    signedPsbt: string;
+    index: number;
+    isLastEvent: boolean;
 }
+
 export interface AuctionInscription {
+    startTime: number;
+    scheduledISODate: string;
+    metadata: AuctionMetadata[];
     inscriptionId: string;
-    endDate?: number;
-    metadata: Array<AuctionMetadata>;
-    next?: AuctionMetadata;
-    current?: AuctionMetadata;
+    btcAddress: string;
+    output: string;
+    status: AuctionStatus;
+    decreaseAmount: number;
+    id: AuctionId;
+    reservePrice: number;
     currentPrice: number;
-    status: 'RUNNING' | 'FINISHED';
+    secondsBetweenEachDecrease: number;
+    initialPrice: number;
 }
+
+export type AuctionInput = {
+    startTime: number;
+    decreaseAmount: number;
+    secondsBetweenEachDecrease: number;
+    initialPrice: number;
+    reservePrice: number;
+    metadata: {
+        price: number;
+        signedPsbt: string;
+    }[];
+    btcAddress: string;
+    output: string;
+    inscriptionId: string;
+};
 
 class Auction extends ApiService {
     config: Config;
@@ -34,7 +62,7 @@ class Auction extends ApiService {
         return this.get(`/auctions`);
     }
 
-    public async getInscription(inscriptionId): Promise<Array<AuctionInscription>> {
+    public async getInscription(inscriptionId: string): Promise<Array<AuctionInscription>> {
         return this.get(`/auctions/inscription/${inscriptionId}`);
     }
 
@@ -42,7 +70,7 @@ class Auction extends ApiService {
         return this.delete(`/auction/${auctionId}`);
     }
 
-    public async create(auction: AuctionInscription): Promise<void> {
+    public async create(auction: AuctionInput): Promise<AuctionInscription> {
         return this.post(`/auction`, auction);
     }
 

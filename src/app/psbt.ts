@@ -58,32 +58,46 @@ const Psbt = function (config) {
         },
 
         signSigHash: ({ sigHash }) => {
-            const metamaskDomain = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
-            if (metamaskDomain) {
-                return psbtModule.signMetamask(sigHash, metamaskDomain);
+            if (provider === 'unisat.io') {
+                throw new Error('Signing with unisat.io is not supported yet');
+            }
+
+            if (provider) {
+                return psbtModule.signMetamask(sigHash, provider);
             }
 
             return psbtModule.signNostr(sigHash);
         },
 
-        getInputParams: ({ utxo, inputAddressInfo }) => {
-            return {
+        getInputParams: ({ utxo, inputAddressInfo, sighashType }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            const pubKey = provider === 'unisat.io' ? inputAddressInfo.internalPubkey : inputAddressInfo.pubkey;
+
+            const params = {
                 hash: utxo.txid,
                 index: utxo.vout,
                 witnessUtxo: {
                     value: utxo.value,
                     script: Buffer.from(inputAddressInfo.output, 'hex'),
                 },
-                tapInternalKey: inputAddressInfo.pubkey,
+                tapInternalKey: pubKey,
                 sequence: 0xfffffffd,
             };
+
+            if (sighashType) {
+                // @ts-ignore
+                params.sighashType = sighashType;
+            }
+
+            return params;
         },
 
-        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output }: any) => {
+        createPsbt: ({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate, output, sighashType }: any) => {
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             // Input
-            const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo });
+            const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo, sighashType });
             psbt.addInput(inputParams);
 
             const psbtOutputValue = output || cryptoModule.outputValue(utxo, sendFeeRate);
@@ -109,11 +123,28 @@ const Psbt = function (config) {
             return psbtModule.broadcastTx(tx);
         },
 
+        broadcastUnisat: async ({ psbt, utxo, destinationBtcAddress, sendFeeRate }) => {
+            // If is an inscription, send it to unisat
+            if (utxo.inscriptionId) {
+                return window.unisat.sendInscription(destinationBtcAddress, utxo.inscriptionId, {
+                    feeRate: sendFeeRate,
+                });
+            }
+
+            const signedPsbt = await window.unisat.signPsbt(psbt.toHex());
+            return window.unisat.pushPsbt(signedPsbt);
+        },
+
         signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
 
             // @ts-ignore
             const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
+
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider === 'unisat.io') {
+                return psbtModule.broadcastUnisat({ psbt, utxo, destinationBtcAddress, sendFeeRate });
+            }
 
             // @ts-ignore
             const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
@@ -136,14 +167,20 @@ const Psbt = function (config) {
             return psbtModule.broadcastPsbt(psbt);
         },
 
-        createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
+        createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, sighashType }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
                 destinationBtcAddress,
+                sighashType,
                 output: config.BOOST_UTXO_VALUE,
             });
+
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider === 'unisat.io') {
+                return window.unisat.signPsbt(psbt.toHex());
+            }
 
             // @ts-ignore
             const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(

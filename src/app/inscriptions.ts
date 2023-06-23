@@ -127,6 +127,8 @@ const Inscriptions = function (config) {
             existingInscription.value > newInscription.value ||
             (existingInscription.value === newInscription.value &&
                 existingInscription.created_at < newInscription.created_at),
+        takeLatestInscription: (existingInscription, newInscription) =>
+            existingInscription.created_at < newInscription.created_at,
     };
 
     return inscriptionsModule;
