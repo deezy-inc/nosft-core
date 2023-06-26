@@ -1,5 +1,6 @@
 import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371.js';
 import { ethers } from 'ethers';
+import { BitcoinNetwork, signTransaction } from 'sats-connect';
 
 import { ECPairFactory } from 'ecpair';
 import { BIP32Factory } from 'bip32';
@@ -11,7 +12,7 @@ import SessionStorage, { SessionsStorageKeys } from '../services/session-storage
 import axios from 'axios';
 import { Crypto } from './crypto';
 import { Address } from './address';
-import { BOOST_UTXO_VALUE } from '../config/constants';
+import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
 
 bitcoin.initEccLib(ecc);
 
@@ -61,8 +62,12 @@ const Psbt = function (config) {
         signSigHash: ({ sigHash }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
+            if (provider === 'xverse') {
+                throw new Error('Signing with xverse is not supported yet.');
+            }
+
             if (provider === 'unisat.io') {
-                throw new Error('Signing with unisat.io is not supported yet');
+                throw new Error('Signing with unisat.io is not supported yet.');
             }
 
             if (provider) {
@@ -166,7 +171,52 @@ const Psbt = function (config) {
             return window.unisat.pushPsbt(signedPsbt);
         },
 
-        signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate }) => {
+        signAndBroadcastUtxoByXverse: async ({ pubKey, address, utxo, destinationBtcAddress, sendFeeRate }) => {
+            const inputAddressInfo = await addressModule.getXverseAddressInfo(pubKey);
+            const basePsbt = await psbtModule.createPsbt({
+                utxo,
+                inputAddressInfo,
+                destinationBtcAddress,
+                sendFeeRate,
+            });
+            let psbtBase64 = '';
+            const signPsbtOptions = {
+                payload: {
+                    network: {
+                        type: NETWORK_NAME,
+                    } as BitcoinNetwork,
+                    message: 'Sign Transaction',
+                    psbtBase64: basePsbt.toBase64(),
+                    broadcast: false,
+                    inputsToSign: [
+                        {
+                            address,
+                            signingIndexes: [0],
+                        },
+                    ],
+                },
+                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
+                    psbtBase64 = _psbtBase64;
+                },
+                onCancel: () => alert('Request canceled.'),
+            };
+            await signTransaction(signPsbtOptions);
+            const psbt = bitcoin.Psbt.fromBase64(psbtBase64, {
+                network: NETWORK,
+            }).finalizeAllInputs();
+            return psbtModule.broadcastPsbt(psbt);
+        },
+
+        signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate, walletName, address }) => {
+            if (walletName === 'xverse') {
+                return psbtModule.signAndBroadcastUtxoByXverse({
+                    pubKey,
+                    address,
+                    utxo,
+                    destinationBtcAddress,
+                    sendFeeRate,
+                });
+            }
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
 
             // @ts-ignore
