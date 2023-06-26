@@ -11,6 +11,7 @@ import SessionStorage, { SessionsStorageKeys } from '../services/session-storage
 import axios from 'axios';
 import { Crypto } from './crypto';
 import { Address } from './address';
+import { BOOST_UTXO_VALUE } from '../config/constants';
 
 bitcoin.initEccLib(ecc);
 
@@ -108,6 +109,36 @@ const Psbt = function (config) {
             });
 
             return psbt;
+        },
+
+        createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
+            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const psbt = psbtModule.createPsbt({
+                utxo,
+                inputAddressInfo,
+                destinationBtcAddress,
+                output: BOOST_UTXO_VALUE,
+            });
+
+            return psbt.toHex();
+        },
+
+        signPsbtForBoost: async ({ psbt }) => {
+            const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
+                0,
+                psbt.data.inputs.map((input) => input.witnessUtxo.script),
+                psbt.data.inputs.map((input) => input.witnessUtxo.value), // eslint-disable-next-line no-bitwise
+                bitcoin.Transaction.SIGHASH_ALL
+            );
+            const signed = await psbtModule.signSigHash({ sigHash });
+            psbt.updateInput(0, {
+                // @ts-ignore
+                tapKeySig: serializeTaprootSignature(Buffer.from(signed, 'hex'), [bitcoin.Transaction.SIGHASH_ALL]),
+            });
+
+            // Finalize the PSBT. Note that the transaction will not be broadcast to the Bitcoin network yet.
+            psbt.finalizeInput(0);
+            return psbt.toHex();
         },
 
         broadcastTx: async (tx) => {
