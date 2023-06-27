@@ -115,9 +115,8 @@ const Psbt = function (config) {
 
             return psbt;
         },
-
         createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
-            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -128,7 +127,40 @@ const Psbt = function (config) {
             return psbt.toHex();
         },
 
-        signPsbtForBoost: async ({ psbt }) => {
+        signPsbtForBoostByXverse: async ({ psbt, address }) => {
+            let psbtBase64 = '';
+            const signPsbtOptions = {
+                payload: {
+                    network: {
+                        type: NETWORK_NAME,
+                    } as BitcoinNetwork,
+                    message: 'Sign Transaction',
+                    psbtBase64: psbt.toBase64(),
+                    broadcast: false,
+                    inputsToSign: [
+                        {
+                            address,
+                            signingIndexes: [0],
+                        },
+                    ],
+                },
+                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
+                    psbtBase64 = _psbtBase64;
+                },
+                onCancel: () => alert('Request canceled.'),
+            };
+            await signTransaction(signPsbtOptions);
+            const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
+                network: NETWORK,
+            }).finalizeInput(0);
+            return finalPsbt.toHex();
+        },
+
+        signPsbtForBoost: async ({ psbt, address }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider === 'xverse') {
+                return psbtModule.signPsbtForBoostByXverse({ psbt, address });
+            }
             const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
                 0,
                 psbt.data.inputs.map((input) => input.witnessUtxo.script),
@@ -172,7 +204,7 @@ const Psbt = function (config) {
         },
 
         signAndBroadcastUtxoByXverse: async ({ pubKey, address, utxo, destinationBtcAddress, sendFeeRate }) => {
-            const inputAddressInfo = await addressModule.getXverseAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const basePsbt = await psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -207,8 +239,9 @@ const Psbt = function (config) {
             return psbtModule.broadcastPsbt(psbt);
         },
 
-        signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate, walletName, address }) => {
-            if (walletName === 'xverse') {
+        signAndBroadcastUtxo: async ({ pubKey, utxo, destinationBtcAddress, sendFeeRate, address }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider === 'xverse') {
                 return psbtModule.signAndBroadcastUtxoByXverse({
                     pubKey,
                     address,
@@ -222,7 +255,6 @@ const Psbt = function (config) {
             // @ts-ignore
             const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
 
-            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             if (provider === 'unisat.io') {
                 return psbtModule.broadcastUnisat({ psbt, utxo, destinationBtcAddress, sendFeeRate });
             }

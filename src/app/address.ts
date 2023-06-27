@@ -13,7 +13,7 @@ bitcoin.initEccLib(ecc);
 const Address = function (config: Config) {
     const cryptoModule = Crypto(config);
     const addressModule = {
-        getAddressInfo: (publicKey) => {
+        getAddressInfo: async (publicKey) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const pubkeyBuffer = Buffer.from(publicKey, 'hex');
 
@@ -25,6 +25,15 @@ const Address = function (config: Config) {
                 });
 
                 return addrInfo;
+            } else if (provider === 'xverse') {
+                const module = await signerModule;
+                const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+                const p2trAddress = module.p2tr(publicKey, undefined, network);
+                return {
+                    ...p2trAddress,
+                    output: hex.encode(p2trAddress.script),
+                    pubkey: Buffer.from(publicKey, 'hex'),
+                };
             }
 
             const addrInfo = bitcoin.payments.p2tr({
@@ -33,16 +42,6 @@ const Address = function (config: Config) {
             });
 
             return addrInfo;
-        },
-        getXverseAddressInfo: async (publicKey) => {
-            const module = await signerModule;
-            const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
-            const p2trAddress = module.p2tr(publicKey, undefined, network);
-            return {
-                ...p2trAddress,
-                output: hex.encode(p2trAddress.script),
-                pubkey: Buffer.from(publicKey, 'hex'),
-            };
         },
     };
 
