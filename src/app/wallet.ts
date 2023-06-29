@@ -13,6 +13,8 @@ const bip32 = BIP32Factory(ecc);
 // Used to prove ownership of addpusress and associated ordinals
 // https://github.com/LegReq/bip0322-signatures/blob/master/BIP0322_signing.ipynb
 
+export const isMetamaskProvider = (provider: string) => METAMASK_PROVIDERS.includes(provider);
+
 const Wallet = function (config) {
     const cryptoModule = Crypto(config);
     const walletModule = {
@@ -98,7 +100,7 @@ const Wallet = function (config) {
                 ordinalsAddress = xverseKeys.ordinalsAddress;
                 paymentAddress = xverseKeys.paymentAddress;
                 // provider === 'alby'
-            } else if (window.ethereum && METAMASK_PROVIDERS.includes(provider)) {
+            } else if (window.ethereum && isMetamaskProvider(provider)) {
                 ordinalsPublicKey = (await walletModule.getEthPubKey()) || '';
             } else {
                 ordinalsPublicKey = await walletModule.getNostrPubKey();
