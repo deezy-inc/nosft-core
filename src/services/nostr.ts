@@ -3,6 +3,7 @@ import { SimplePool, getEventHash, Sub } from 'nostr-tools';
 import SessionStorage, { SessionsStorageKeys } from './session-storage';
 import { Psbt } from '../app/psbt';
 import { Config } from '../config/config';
+import { isMetamaskProvider } from '../app/wallet';
 
 function cleanEvent(event) {
     return {
@@ -90,7 +91,7 @@ class NostrRelay {
             ...eventBase,
             id: getEventHash(eventBase),
         };
-        if (metamaskDomain) {
+        if (metamaskDomain && isMetamaskProvider(metamaskDomain)) {
             const metamaskSigner = await this.psbt.getMetamaskSigner(metamaskDomain);
             const signature = await metamaskSigner.signSchnorr(Buffer.from(newEvent.id, 'hex'));
             return {

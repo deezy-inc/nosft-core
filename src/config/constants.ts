@@ -23,7 +23,9 @@ export const RELAYS = [
 ];
 export const BITCOIN_PRICE_API_URL = 'https://blockchain.info/ticker?cors=true';
 export const BITCOIN_BLOCK_AVG_API_URL = 'https://blockchain.info/q/interval?cors=true';
-export const TURBO_API = TESTNET ? 'https://turbo-ordinals-testnet.deezy.io' : 'https://turbo-ordinals.deezy.io';
+export const TURBO_API = TESTNET
+    ? 'https://turbo-ordinals-testnet.deezy.io'
+    : 'https://turbo-deezy.herokuapp.com/pipe/https://turbo.ordinalswallet.com'; // 'https://turbo-ordinals.deezy.io';
 export const BLOCKSTREAM_API = 'https://blockstream.info/api';
 export const POOL_API_URL = TESTNET ? 'https://mempool.space/signet' : 'https://blockstream.info';
 

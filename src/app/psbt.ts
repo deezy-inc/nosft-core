@@ -30,7 +30,7 @@ const Psbt = function (config) {
             let ethAddress = ethereum.selectedAddress;
 
             if (!ethAddress) {
-                await ethereum.srequest({ method: 'eth_requestAccounts' });
+                await ethereum.request({ method: 'eth_requestAccounts' });
                 ethAddress = ethereum.selectedAddress;
             }
 
