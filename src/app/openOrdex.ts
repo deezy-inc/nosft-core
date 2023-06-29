@@ -227,7 +227,7 @@ const OpenOrdex = function (config) {
                 value: price,
             });
 
-            return psbt.toBase64();
+            return psbt;
         },
 
         generatePSBTListingInscriptionForBuy: async ({
