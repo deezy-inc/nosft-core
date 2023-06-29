@@ -13,6 +13,7 @@ import axios from 'axios';
 import { Crypto } from './crypto';
 import { Address } from './address';
 import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
+import { isMetamaskProvider } from './wallet';
 
 bitcoin.initEccLib(ecc);
 
@@ -70,7 +71,7 @@ const Psbt = function (config) {
                 throw new Error('Signing with unisat.io is not supported yet.');
             }
 
-            if (provider) {
+            if (isMetamaskProvider(provider)) {
                 return psbtModule.signMetamask(sigHash, provider);
             }
 
@@ -319,10 +320,70 @@ const Psbt = function (config) {
             return psbt.toHex();
         },
 
-        signPsbtMessage: async (message) => {
-            const virtualToSign = bitcoin.Psbt.fromBase64(message);
+        signPsbtListingXverse: async ({ psbt: existingPsbt, address }) => {
+            const newPsbt = new bitcoin.Psbt({ network: config.NETWORK });
+
+            // Iterate over each input of the existing PSBT
+            existingPsbt.data.inputs.forEach((input, index) => {
+                newPsbt.addInput({
+                    hash: existingPsbt.txInputs[index].hash,
+                    index: existingPsbt.txInputs[index].index,
+                    nonWitnessUtxo: input.nonWitnessUtxo,
+                    witnessUtxo: input.witnessUtxo,
+                    sighashType: 131,
+                });
+            });
+
+            // Add outputs
+            existingPsbt.txOutputs.forEach((output) => {
+                newPsbt.addOutput({
+                    address: output.address,
+                    value: output.value,
+                });
+            });
+
+            let psbtBase64 = '';
+            const signPsbtOptions = {
+                payload: {
+                    network: {
+                        type: NETWORK_NAME,
+                    } as BitcoinNetwork,
+                    message: 'Sign Transaction',
+                    psbtBase64: newPsbt.toBase64(),
+                    broadcast: false,
+                    inputsToSign: [
+                        {
+                            address,
+                            signingIndexes: [0],
+                            sigHash: 131,
+                        },
+                    ],
+                },
+                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
+                    psbtBase64 = _psbtBase64;
+                },
+                onCancel: () => alert('Request canceled.'),
+            };
+            await signTransaction(signPsbtOptions);
+            const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
+                network: NETWORK,
+            }).finalizeAllInputs();
+            return finalPsbt;
+        },
+
+        signPsbtMessage: async (psbt, address) => {
+            const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
+                network: NETWORK,
+            });
             // if only 1 input, then this is a PSBT listing
             if (virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) {
+                const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+                if (provider === 'xverse') {
+                    return psbtModule.signPsbtListingXverse({
+                        psbt: virtualToSign,
+                        address,
+                    });
+                }
                 // @ts-ignore
                 const sigHash = virtualToSign.__CACHE.__TX.hashForWitnessV1(
                     0,
