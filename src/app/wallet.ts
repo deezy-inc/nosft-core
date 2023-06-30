@@ -59,6 +59,7 @@ const Wallet = function (config) {
         },
         getXverseKeys: async () => {
             let ordinalsPublicKey = '';
+            let paymentPublicKey = '';
             let paymentAddress = '';
             let ordinalsAddress = '';
             const getAddressOptions = {
@@ -70,35 +71,40 @@ const Wallet = function (config) {
                     } as BitcoinNetwork,
                 },
                 onFinish: (response) => {
-                    const { publicKey, address: walletOrdinalAddress } = response.addresses.find(
+                    console.log('[xverse]', response);
+                    const { publicKey: xOrdinalPublicKey, address: xOrdinalAddress } = response.addresses.find(
                         (address) => address.purpose === 'ordinals'
                     );
-                    ordinalsPublicKey = publicKey.toString('hex');
-                    const { address: walletPaymentAddress } = response.addresses.find(
+                    const { publicKey: xPaymentPublicKey, address: xPaymentAddress } = response.addresses.find(
                         (address) => address.purpose === 'payment'
                     );
-                    paymentAddress = walletPaymentAddress;
-                    ordinalsAddress = walletOrdinalAddress;
+                    ordinalsPublicKey = xOrdinalPublicKey.toString('hex');
+                    paymentPublicKey = xPaymentPublicKey.toString('hex');
+                    paymentAddress = xPaymentAddress;
+                    ordinalsAddress = xOrdinalAddress;
                 },
                 onCancel: () => alert('Request canceled.'),
             };
 
             await getAddress(getAddressOptions);
-            return { ordinalsPublicKey, ordinalsAddress, paymentAddress };
+            const wallet = { ordinalsPublicKey, paymentPublicKey, ordinalsAddress, paymentAddress };
+            return wallet;
         },
         connectWallet: async (provider) => {
             const walletName = provider?.split('.')[0] || '';
             let ordinalsPublicKey = '';
+            let paymentPublicKey = '';
             let ordinalsAddress = '';
             let paymentAddress = '';
 
             if (provider === 'unisat.io' && window.unisat) {
                 ordinalsPublicKey = await walletModule.getUnisatPubKey();
             } else if (provider === 'xverse') {
-                const xverseKeys = await walletModule.getXverseKeys();
-                ordinalsPublicKey = xverseKeys.ordinalsPublicKey;
-                ordinalsAddress = xverseKeys.ordinalsAddress;
-                paymentAddress = xverseKeys.paymentAddress;
+                const xverse = await walletModule.getXverseKeys();
+                ordinalsPublicKey = xverse.ordinalsPublicKey;
+                paymentPublicKey = xverse.paymentPublicKey;
+                ordinalsAddress = xverse.ordinalsAddress;
+                paymentAddress = xverse.paymentAddress;
                 // provider === 'alby'
             } else if (window.ethereum && isMetamaskProvider(provider)) {
                 ordinalsPublicKey = (await walletModule.getEthPubKey()) || '';
@@ -108,6 +114,7 @@ const Wallet = function (config) {
             return {
                 walletName,
                 ordinalsPublicKey,
+                paymentPublicKey,
                 ordinalsAddress,
                 paymentAddress,
             };

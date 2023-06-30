@@ -60,7 +60,7 @@ const Psbt = function (config) {
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 
-        signSigHashByXverse: async (psbt, address) => {
+        signByXverse: async (psbt, inputsToSign) => {
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -70,12 +70,7 @@ const Psbt = function (config) {
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
                     broadcast: false,
-                    inputsToSign: [
-                        {
-                            address,
-                            signingIndexes: [0],
-                        },
-                    ],
+                    inputsToSign,
                 },
                 onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
                     psbtBase64 = _psbtBase64;
@@ -85,15 +80,15 @@ const Psbt = function (config) {
             await signTransaction(signPsbtOptions);
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
-            }).finalizeInput(0);
-            return finalPsbt.toHex();
+            });
+            return finalPsbt;
         },
 
-        signSigHash: ({ sigHash, address }: { sigHash: any; address?: string }) => {
+        signSigHash: ({ sigHash }: { sigHash: any }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
             if (provider === 'xverse') {
-                return psbtModule.signSigHashByXverse(sigHash, address);
+                throw new Error('Signing with xverse is not supported yet.');
             }
 
             if (provider === 'unisat.io') {
@@ -380,12 +375,12 @@ const Psbt = function (config) {
         },
 
         signPsbtMessage: async (psbt, address) => {
-            const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
+            let virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             // if only 1 input, then this is a PSBT listing
             if (virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) {
-                const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
                 if (provider === 'xverse') {
                     return psbtModule.signPsbtListingXverse({
                         psbt: virtualToSign,
@@ -436,6 +431,16 @@ const Psbt = function (config) {
                     witnessValues.push(virtualToSign.data.inputs[i].witnessUtxo.value);
                 }
             });
+
+            debugger;
+
+            const inputsToSign: {
+                address: string;
+                signingIndexes: number[];
+                sigHash?: number;
+                index: number;
+            }[] = [];
+
             // create and update resultant sighashes
             // eslint-disable-next-line no-restricted-syntax
             for (const [i, input] of virtualToSign.data.inputs.entries()) {
@@ -447,15 +452,32 @@ const Psbt = function (config) {
                         witnessValues,
                         bitcoin.Transaction.SIGHASH_DEFAULT
                     );
-                    // eslint-disable-next-line no-await-in-loop
-                    const signature = await psbtModule.signSigHash({ sigHash });
-                    virtualToSign.updateInput(i, {
-                        // @ts-ignore
-                        tapKeySig: serializeTaprootSignature(Buffer.from(signature, 'hex')),
-                    });
-                    virtualToSign.finalizeInput(i);
+
+                    if (provider !== 'xverse') {
+                        // eslint-disable-next-line no-await-in-loop
+                        const signature = await psbtModule.signSigHash({ sigHash });
+                        virtualToSign.updateInput(i, {
+                            // @ts-ignore
+                            tapKeySig: serializeTaprootSignature(Buffer.from(signature, 'hex')),
+                        });
+                        virtualToSign.finalizeInput(i);
+                    } else {
+                        inputsToSign.push({
+                            address,
+                            signingIndexes: [i],
+                            index: i,
+                        });
+                    }
                 }
             }
+            if (provider === 'xverse') {
+                virtualToSign = await psbtModule.signByXverse(virtualToSign, inputsToSign);
+                debugger;
+                for (const input of inputsToSign) {
+                    virtualToSign.finalizeInput(input.index);
+                }
+            }
+            debugger;
             console.log(virtualToSign.toBase64());
             return virtualToSign.extractTransaction();
         },

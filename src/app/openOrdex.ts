@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop, no-continue, react/forbid-prop-types, radix, no-empty, guard-for-in */
+import { NETWORK } from '../config/constants';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
 import { Address } from './address';
 import { Crypto } from './crypto';
@@ -244,6 +245,7 @@ const OpenOrdex = function (config) {
 
         generatePSBTListingInscriptionForBuy: async ({
             payerAddress,
+            payerPubkey,
             receiverAddress,
             price,
             paymentUtxos,
@@ -251,6 +253,17 @@ const OpenOrdex = function (config) {
             sellerSignedPsbt,
             inscription,
         }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            let redeemScript;
+
+            if (provider === 'xverse') {
+                // Calculate P2WPKH script
+                const wpkh = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(payerPubkey, 'hex'), network: NETWORK });
+                if (wpkh) {
+                    redeemScript = wpkh.output;
+                }
+            }
+
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
 
             let totalPaymentValue = 0;
@@ -265,10 +278,11 @@ const OpenOrdex = function (config) {
                         tx.setWitness(parseInt(output), []);
                     } catch {}
                 }
+
                 psbt.addInput({
                     hash: dummyUtxo.txid,
                     index: dummyUtxo.vout,
-                    nonWitnessUtxo: tx.toBuffer(),
+                    ...(redeemScript ? { redeemScript } : { nonWitnessUtxo: tx.toBuffer() }),
                 });
 
                 totalDummyValue += dummyUtxo.value;
@@ -339,6 +353,8 @@ const OpenOrdex = function (config) {
                 address: payerAddress,
                 value: changeValue,
             });
+
+            debugger;
 
             return psbt;
         },
