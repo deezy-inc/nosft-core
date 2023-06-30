@@ -328,9 +328,7 @@ const OpenOrdex = function (config) {
                 value: changeValue,
             });
 
-            const psbt64 = psbt.toBase64();
-
-            return psbt64;
+            return psbt;
         },
     };
 

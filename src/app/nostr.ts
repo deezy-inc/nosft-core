@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop */
 import { nostrPool as _nostrPool } from '../services/nostr';
-import { getEventHash } from 'nostr-tools';
-
+import { getEventHash, validateEvent, verifySignature } from 'nostr-tools';
+import axios from 'axios';
 import { OpenOrdex } from './openOrdex';
 import { Config } from '../config/config';
 import { Utxo } from './utxo';
@@ -182,6 +182,18 @@ const Nostr = function (config: Config) {
             nostrPool.unsubscribeAll();
         },
 
+        // Dutch auction API abstracts the process of signing it and publishing it to nostr
+        publishOrder: async ({ utxo, ordinalValue, signedPsbt }) => {
+            const data = await axios.post(`${config.AUCTION_URL}/nostr`, {
+                psbt: signedPsbt,
+                output: utxo.output,
+                inscriptionId: utxo.inscriptionId,
+                currentPrice: ordinalValue,
+            });
+
+            return data.data;
+        },
+
         signAndBroadcastEvent: async ({ utxo, ordinalValue, signedPsbt, pubkey }) => {
             const { inscriptionId } = utxo;
             const inscriptionUtxo = `${utxo.txid}:${utxo.vout}`;
@@ -194,8 +206,18 @@ const Nostr = function (config: Config) {
                 pubkey,
             });
             const signedEvent = await nostrPool.sign(event);
+            const ok = validateEvent(signedEvent);
+            const veryOk = verifySignature(signedEvent);
 
             // convert the callback to a promise
+            if (!ok) {
+                throw new Error('Invalid event');
+            }
+
+            if (!veryOk) {
+                throw new Error('Invalid signature');
+            }
+
             return new Promise((resolve, reject) => {
                 nostrPool.publish(signedEvent, resolve, reject);
             });

@@ -85,19 +85,24 @@ class NostrRelay {
 
     // eslint-disable-next-line class-methods-use-this
     async sign(event) {
-        const metamaskDomain = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+        const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
         const eventBase = { ...event, created_at: Math.floor(Date.now() / 1000) };
         const newEvent = {
             ...eventBase,
             id: getEventHash(eventBase),
         };
-        if (metamaskDomain && isMetamaskProvider(metamaskDomain)) {
-            const metamaskSigner = await this.psbt.getMetamaskSigner(metamaskDomain);
+
+        if (provider && isMetamaskProvider(provider)) {
+            const metamaskSigner = await this.psbt.getMetamaskSigner(provider);
             const signature = await metamaskSigner.signSchnorr(Buffer.from(newEvent.id, 'hex'));
             return {
                 ...newEvent,
                 sig: signature.toString('hex'),
             };
+        }
+
+        if (provider === 'unisat.io' || provider === 'xverse') {
+            throw new Error('Unisat does not support shnorr signatures yet.');
         }
         // @ts-ignore
         return window.nostr.signEvent(newEvent);
