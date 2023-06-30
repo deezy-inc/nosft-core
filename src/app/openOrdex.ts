@@ -204,7 +204,6 @@ const OpenOrdex = function (config) {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let inputAddressInfo;
             if (provider === 'xverse') {
-                debugger;
                 inputAddressInfo = await addressModule.getAddressInfo(pubkey);
             }
 
@@ -220,8 +219,6 @@ const OpenOrdex = function (config) {
                 } catch {}
             }
 
-            debugger;
-
             const input = {
                 hash: ordinalUtxoTxId,
                 index: parseInt(ordinalUtxoVout, 10),
@@ -234,8 +231,6 @@ const OpenOrdex = function (config) {
                     ? { tapInternalKey: inputAddressInfo.tapInternalKey }
                     : { nonWitnessUtxo: tx.toBuffer() }),
             };
-
-            debugger;
 
             psbt.addInput(input);
 

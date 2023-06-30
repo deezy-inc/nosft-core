@@ -350,7 +350,6 @@ const Psbt = function (config) {
         },
 
         signPsbtListingXverse: async ({ psbt, address }) => {
-            debugger;
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {

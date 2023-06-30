@@ -84,7 +84,6 @@ const Wallet = function (config) {
             };
 
             await getAddress(getAddressOptions);
-            console.log('[xverse]', { ordinalsPublicKey, ordinalsAddress, paymentAddress });
             return { ordinalsPublicKey, ordinalsAddress, paymentAddress };
         },
         connectWallet: async (provider) => {

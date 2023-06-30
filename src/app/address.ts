@@ -29,14 +29,12 @@ const Address = function (config: Config) {
                 const module = await signerModule;
                 const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
                 const p2trAddress = module.p2tr(pubkey, undefined, network);
-                debugger;
                 const result = {
                     ...p2trAddress,
                     tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
                     output: hex.encode(p2trAddress.script),
                     pubkey: Buffer.from(pubkey, 'hex'),
                 };
-                console.log('[getAddressInfo]', result);
                 return result;
             }
 
