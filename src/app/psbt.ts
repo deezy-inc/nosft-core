@@ -60,11 +60,40 @@ const Psbt = function (config) {
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 
-        signSigHash: ({ sigHash }) => {
+        signSigHashByXverse: async (psbt, address) => {
+            let psbtBase64 = '';
+            const signPsbtOptions = {
+                payload: {
+                    network: {
+                        type: NETWORK_NAME,
+                    } as BitcoinNetwork,
+                    message: 'Sign Transaction',
+                    psbtBase64: psbt.toBase64(),
+                    broadcast: false,
+                    inputsToSign: [
+                        {
+                            address,
+                            signingIndexes: [0],
+                        },
+                    ],
+                },
+                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
+                    psbtBase64 = _psbtBase64;
+                },
+                onCancel: () => alert('Request canceled.'),
+            };
+            await signTransaction(signPsbtOptions);
+            const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
+                network: NETWORK,
+            }).finalizeInput(0);
+            return finalPsbt.toHex();
+        },
+
+        signSigHash: ({ sigHash, address }: { sigHash: any; address?: string }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
             if (provider === 'xverse') {
-                throw new Error('Signing with xverse is not supported yet.');
+                return psbtModule.signSigHashByXverse(sigHash, address);
             }
 
             if (provider === 'unisat.io') {
@@ -320,28 +349,7 @@ const Psbt = function (config) {
             return psbt.toHex();
         },
 
-        signPsbtListingXverse: async ({ psbt: existingPsbt, address }) => {
-            const newPsbt = new bitcoin.Psbt({ network: config.NETWORK });
-
-            // Iterate over each input of the existing PSBT
-            existingPsbt.data.inputs.forEach((input, index) => {
-                newPsbt.addInput({
-                    hash: existingPsbt.txInputs[index].hash,
-                    index: existingPsbt.txInputs[index].index,
-                    nonWitnessUtxo: input.nonWitnessUtxo,
-                    witnessUtxo: input.witnessUtxo,
-                    sighashType: 131,
-                });
-            });
-
-            // Add outputs
-            existingPsbt.txOutputs.forEach((output) => {
-                newPsbt.addOutput({
-                    address: output.address,
-                    value: output.value,
-                });
-            });
-
+        signPsbtListingXverse: async ({ psbt, address }) => {
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -349,7 +357,7 @@ const Psbt = function (config) {
                         type: NETWORK_NAME,
                     } as BitcoinNetwork,
                     message: 'Sign Transaction',
-                    psbtBase64: newPsbt.toBase64(),
+                    psbtBase64: psbt.toBase64(),
                     broadcast: false,
                     inputsToSign: [
                         {
@@ -367,7 +375,7 @@ const Psbt = function (config) {
             await signTransaction(signPsbtOptions);
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
-            }).finalizeAllInputs();
+            }).finalizeInput(0);
             return finalPsbt;
         },
 

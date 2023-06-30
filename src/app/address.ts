@@ -13,11 +13,11 @@ bitcoin.initEccLib(ecc);
 const Address = function (config: Config) {
     const cryptoModule = Crypto(config);
     const addressModule = {
-        getAddressInfo: async (publicKey) => {
+        getAddressInfo: async (pubkey) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-            const pubkeyBuffer = Buffer.from(publicKey, 'hex');
+            const pubkeyBuffer = Buffer.from(pubkey, 'hex');
 
-            console.log(`Pubkey: ${publicKey.toString()}`);
+            console.log(`Pubkey: ${pubkey.toString()}`);
             if (provider === 'unisat.io') {
                 const addrInfo = bitcoin.payments.p2tr({
                     internalPubkey: cryptoModule.toXOnly(pubkeyBuffer),
@@ -28,12 +28,14 @@ const Address = function (config: Config) {
             } else if (provider === 'xverse') {
                 const module = await signerModule;
                 const network = TESTNET ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
-                const p2trAddress = module.p2tr(publicKey, undefined, network);
-                return {
+                const p2trAddress = module.p2tr(pubkey, undefined, network);
+                const result = {
                     ...p2trAddress,
+                    tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
                     output: hex.encode(p2trAddress.script),
-                    pubkey: Buffer.from(publicKey, 'hex'),
+                    pubkey: Buffer.from(pubkey, 'hex'),
                 };
+                return result;
             }
 
             const addrInfo = bitcoin.payments.p2tr({

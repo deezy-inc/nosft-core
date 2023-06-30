@@ -1,4 +1,6 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop, no-continue, react/forbid-prop-types, radix, no-empty, guard-for-in */
+import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
+import { Address } from './address';
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
@@ -10,6 +12,7 @@ bitcoin.initEccLib(ecc);
 const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
+    const addressModule = Address(config);
 
     const ordexModule = {
         isSaleOrder: (order) => {
@@ -197,7 +200,13 @@ const OpenOrdex = function (config) {
             return { selectedUtxos, dummyUtxos };
         },
 
-        generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price }) => {
+        generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            let inputAddressInfo;
+            if (provider === 'xverse') {
+                inputAddressInfo = await addressModule.getAddressInfo(pubkey);
+            }
+
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             const ordinalUtxoTxId = utxo.txid;
             const ordinalUtxoVout = utxo.vout;
@@ -213,11 +222,14 @@ const OpenOrdex = function (config) {
             const input = {
                 hash: ordinalUtxoTxId,
                 index: parseInt(ordinalUtxoVout, 10),
-                nonWitnessUtxo: tx.toBuffer(),
                 witnessUtxo: tx.outs[ordinalUtxoVout],
+                // Maybe we should add it
                 // eslint-disable-next-line no-bitwise
                 sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
                 sequence: 0xfffffffd,
+                ...(inputAddressInfo
+                    ? { tapInternalKey: inputAddressInfo.tapInternalKey }
+                    : { nonWitnessUtxo: tx.toBuffer() }),
             };
 
             psbt.addInput(input);
