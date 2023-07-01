@@ -9,6 +9,10 @@ import {
     CollectionAllowListRequest,
     CollectionAllowList,
     UpdateCollectionAllowListRequest,
+    PopulatePsbt,
+    PopulatePsbtResponse,
+    FinalizePsbt,
+    FinalizePsbtResponse,
 } from '../types/deezy';
 import ApiService from '../utils/httpService';
 const DEEZY_API_URL = (_network: any) => {
@@ -45,6 +49,14 @@ class Deezy extends ApiService {
 
     public async mintInscription(mintInscriptionRequest: MintInscriptionRequest): Promise<MintInscriptionResponse> {
         return this.post('/v1/inscriptions/mint', mintInscriptionRequest);
+    }
+
+    public async populatePsbt(payload: PopulatePsbt): Promise<PopulatePsbtResponse> {
+        return this.post('/v1/ordinals/psbt/populate', payload);
+    }
+
+    public async finalizePsbt(payload: FinalizePsbt): Promise<FinalizePsbtResponse> {
+        return this.post('/v1/ordinals/psbt/finalize', payload);
     }
 
     public async getMintAttempt(mintAttemptId: string): Promise<MintAttempt> {

@@ -17,6 +17,24 @@ export interface MintInscriptionRequest {
     receive_email: string;
 }
 
+export interface PopulatePsbt {
+    psbt: string; // (hex or base64)
+    ordinal_receive_address: string;
+}
+
+export interface PopulatePsbtResponse {
+    psbt: string; // (hex or base64)
+    id: string;
+    expires_at: number;
+}
+
+export interface FinalizePsbt {
+    id: string;
+    psbt: string; // (hex or base64)
+}
+
+export type FinalizePsbtResponse = any; // TODO: fix type
+
 export interface MintInscriptionResponse {
     bolt11_invoice: string;
     mint_attempt_id: string;
