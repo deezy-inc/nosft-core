@@ -283,7 +283,8 @@ const OpenOrdex = function (config) {
                 psbt.addInput({
                     hash: dummyUtxo.txid,
                     index: dummyUtxo.vout,
-                    ...(redeemScript ? { redeemScript } : { nonWitnessUtxo: tx.toBuffer() }),
+                    nonWitnessUtxo: tx.toBuffer(),
+                    ...(redeemScript ? { redeemScript } : {}),
                 });
 
                 totalDummyValue += dummyUtxo.value;

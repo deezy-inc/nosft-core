@@ -61,6 +61,7 @@ const Psbt = function (config) {
         },
 
         signByXverse: async (psbt, inputsToSign) => {
+            debugger;
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -374,7 +375,8 @@ const Psbt = function (config) {
             return finalPsbt;
         },
 
-        signPsbtMessage: async (psbt, address) => {
+        signPsbtMessage: async (psbt, ordinalAddress, paymentAddress) => {
+            debugger;
             let virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
@@ -384,7 +386,7 @@ const Psbt = function (config) {
                 if (provider === 'xverse') {
                     return psbtModule.signPsbtListingXverse({
                         psbt: virtualToSign,
-                        address,
+                        address: ordinalAddress,
                     });
                 }
                 // @ts-ignore
@@ -415,7 +417,7 @@ const Psbt = function (config) {
             virtualToSign.data.inputs.forEach((input, i) => {
                 if (!input.finalScriptWitness) {
                     // @ts-ignore
-                    const tx = bitcoin.Transaction.fromBuffer(virtualToSign.data.inputs[i].nonWitnessUtxo);
+                    const tx = bitcoin.Transaction.fromBuffer(virtualToSign.data.inputs[i].nonWitnessUtxo); // TODO: here
                     const output = tx.outs[virtualToSign.txInputs[i].index];
                     virtualToSign.updateInput(i, {
                         witnessUtxo: output,
@@ -463,7 +465,7 @@ const Psbt = function (config) {
                         virtualToSign.finalizeInput(i);
                     } else {
                         inputsToSign.push({
-                            address,
+                            address: paymentAddress,
                             signingIndexes: [i],
                             index: i,
                         });
