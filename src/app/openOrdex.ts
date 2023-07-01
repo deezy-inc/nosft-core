@@ -280,6 +280,7 @@ const OpenOrdex = function (config) {
                     } catch {}
                 }
 
+                debugger;
                 psbt.addInput({
                     hash: dummyUtxo.txid,
                     index: dummyUtxo.vout,

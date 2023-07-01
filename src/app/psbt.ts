@@ -464,11 +464,13 @@ const Psbt = function (config) {
                         });
                         virtualToSign.finalizeInput(i);
                     } else {
-                        inputsToSign.push({
-                            address: paymentAddress,
-                            signingIndexes: [i],
-                            index: i,
-                        });
+                        if (input.redeemScript) {
+                            inputsToSign.push({
+                                address: paymentAddress,
+                                signingIndexes: [i],
+                                index: i,
+                            });
+                        }
                     }
                 }
             }
