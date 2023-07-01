@@ -327,6 +327,7 @@ const OpenOrdex = function (config) {
                     hash: utxo.txid,
                     index: utxo.vout,
                     nonWitnessUtxo: utxoTx.toBuffer(),
+                    ...(redeemScript ? { redeemScript } : {}),
                 });
 
                 totalPaymentValue += utxo.value;
