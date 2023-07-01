@@ -152,6 +152,7 @@ const OpenOrdex = function (config) {
         },
 
         getAvailableUtxosWithoutInscription: async ({ address, price }) => {
+            debugger;
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
