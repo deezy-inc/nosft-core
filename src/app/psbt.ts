@@ -464,6 +464,7 @@ const Psbt = function (config) {
                         });
                         virtualToSign.finalizeInput(i);
                     } else {
+                        debugger;
                         if (input.redeemScript) {
                             inputsToSign.push({
                                 address: paymentAddress,
