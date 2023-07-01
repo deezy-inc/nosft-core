@@ -25,7 +25,7 @@ export interface PopulatePsbt {
 export interface PopulatePsbtResponse {
     psbt: string; // (hex or base64)
     id: string;
-    expires_at: number;
+    expires_at: string;
 }
 
 export interface FinalizePsbt {
