@@ -60,7 +60,7 @@ const Psbt = function (config) {
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 
-        signByXverse: async (psbt, inputsToSign) => {
+        signByXverse: async (psbt, address) => {
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -71,16 +71,17 @@ const Psbt = function (config) {
                     psbtBase64: psbt.toBase64(),
                     broadcast: false,
                     inputsToSign: [
+                        // {
+                        //     ...inputsToSign[0],
+                        //     sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
+                        // },
+                        // {
+                        //     ...inputsToSign[1],
+                        //     sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
+                        // },
                         {
-                            ...inputsToSign[0],
-                            sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
-                        },
-                        {
-                            ...inputsToSign[1],
-                            sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
-                        },
-                        {
-                            ...inputsToSign[2],
+                            address,
+                            signingIndexes: [3],
                             sigHash: bitcoin.Transaction.SIGHASH_ALL,
                         },
                     ],
@@ -94,7 +95,7 @@ const Psbt = function (config) {
             debugger;
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
-            });
+            }).finalizeInput(3);
             return finalPsbt;
         },
 
@@ -494,8 +495,20 @@ const Psbt = function (config) {
                         console.error(e);
                     }
                 }
-                virtualToSign = await psbtModule.signByXverse(virtualToSign, inputsToSign);
+                // disable for now
+                // virtualToSign = await psbtModule.signByXverse(virtualToSign, inputsToSign);
                 debugger;
+            }
+            if (provider === 'xverse') {
+                for (const [i] of virtualToSign.data.inputs.entries()) {
+                    try {
+                        virtualToSign.finalizeInput(i);
+                    } catch (e) {
+                        debugger;
+                        console.log('[error]', i);
+                        console.error(e);
+                    }
+                }
             }
             console.log('[signByXverse]', virtualToSign.toBase64());
             const xtr = virtualToSign.extractTransaction();

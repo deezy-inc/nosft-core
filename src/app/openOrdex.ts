@@ -6,6 +6,7 @@ import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
 import Deezy from '../services/deezy';
+import { Psbt } from './psbt';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 
@@ -15,6 +16,7 @@ const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
     const addressModule = Address(config);
+    const psbtModule = Psbt(config);
     const deezyApi = new Deezy(config);
 
     const ordexModule = {
@@ -316,8 +318,10 @@ const OpenOrdex = function (config) {
                 value: changeValue,
             });
 
+            const finalPopulatedPsbt = await psbtModule.signByXverse(populatedPsbt, payerAddress);
+
             const finalizedTx = await deezyApi.finalizePsbt({
-                psbt: populatedPsbt.toBase64(),
+                psbt: finalPopulatedPsbt.toBase64(),
                 id,
             });
 

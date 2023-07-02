@@ -8,6 +8,7 @@ const Inscriptions = function (config) {
     const cryptoModule = Crypto(config);
     const inscriptionsModule = {
         // TODO: Implement also some type of server side caching.
+        // TODO: after buy, sell an inscription we should invalidate the cache.
         getOutpointFromCache: async (inscriptionId) => {
             try {
                 const key = `${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:${inscriptionId}`;
@@ -32,11 +33,21 @@ const Inscriptions = function (config) {
             return undefined;
         },
 
+        getOutpoint: async (inscriptionId) => {
+            try {
+                const result = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}/outpoint`);
+                return result.data;
+            } catch (error) {
+                console.error(error);
+            }
+            return undefined;
+        },
+
         getInscriptionsByUtxoKey: async (inscriptions) => {
             const inscriptionsByUtxoKey = {};
             const batchPromises = [];
             const populateInscriptionsMap = async (ins) => {
-                const outpointData = await inscriptionsModule.getOutpointFromCache(ins.id);
+                const outpointData = await inscriptionsModule.getOutpoint(ins.id);
                 if (outpointData) {
                     const {
                         inscription: { outpoint },
@@ -45,7 +56,6 @@ const Inscriptions = function (config) {
 
                     inscriptionsByUtxoKey[`${txid}:${vout}`] = ins;
                 }
-
                 return inscriptionsByUtxoKey;
             };
 
@@ -78,13 +88,15 @@ const Inscriptions = function (config) {
         },
 
         getInscriptions: async (address) => {
+            debugger;
             const addressUtxos = await utxoModule.getAddressUtxos(address);
             const utxos = await cryptoModule.sortUtxos(addressUtxos);
             const inscriptions = await inscriptionsModule.getInscriptionsForAddress(address);
 
             const inscriptionsByUtxoKey = await inscriptionsModule.getInscriptionsByUtxoKey(inscriptions);
-
-            return inscriptionsModule.addInscriptionDataToUtxos(utxos, inscriptionsByUtxoKey);
+            const finalMatch = inscriptionsModule.addInscriptionDataToUtxos(utxos, inscriptionsByUtxoKey);
+            debugger;
+            return finalMatch;
         },
 
         getInscription: async (inscriptionId) => {
@@ -92,7 +104,7 @@ const Inscriptions = function (config) {
 
             const { data: inscriptionData } = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}`);
 
-            const outpointResult = await inscriptionsModule.getOutpointFromCache(inscriptionId);
+            const outpointResult = await inscriptionsModule.getOutpoint(inscriptionId);
             const {
                 inscription: { outpoint },
                 owner,
