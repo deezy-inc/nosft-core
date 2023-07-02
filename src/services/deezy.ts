@@ -16,7 +16,7 @@ import {
 } from '../types/deezy';
 import ApiService from '../utils/httpService';
 const DEEZY_API_URL = (_network: any) => {
-    return 'https://deezy-api.nosft.io';
+    return 'https://api.deezy.io';
 };
 
 interface MintCustomInscriptionResponse {

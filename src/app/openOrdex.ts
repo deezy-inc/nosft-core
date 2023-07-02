@@ -5,6 +5,7 @@ import { Address } from './address';
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
+import Deezy from '../services/deezy';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 
@@ -14,6 +15,7 @@ const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
     const addressModule = Address(config);
+    const deezyApi = new Deezy(config);
 
     const ordexModule = {
         isSaleOrder: (order) => {
@@ -152,7 +154,6 @@ const OpenOrdex = function (config) {
         },
 
         getAvailableUtxosWithoutInscription: async ({ address, price }) => {
-            debugger;
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -244,6 +245,87 @@ const OpenOrdex = function (config) {
             return psbt;
         },
 
+        generateDeezyPSBTListingForBuy: async ({
+            sellerBase64SignedPsbt,
+            ordinalReceiveAddress,
+            selectedUtxos,
+            payerPubkey,
+            payerAddress,
+            price,
+        }) => {
+            const { id, psbt } = await deezyApi.populatePsbt({
+                psbt: sellerBase64SignedPsbt, // (hex or base64)
+                ordinal_receive_address: ordinalReceiveAddress,
+            });
+
+            const populatedPsbt = bitcoin.Psbt.fromHex(psbt, {
+                network: NETWORK,
+            });
+
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            let redeemScript;
+
+            if (provider === 'xverse') {
+                // Calculate P2WPKH script
+                const wpkh = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(payerPubkey, 'hex'), network: NETWORK });
+                if (wpkh) {
+                    redeemScript = wpkh.output;
+                }
+            }
+
+            let totalPaymentValue = 0;
+            let totalDummyValue = 0;
+
+            // Add payment utxo inputs
+            for (const utxo of selectedUtxos) {
+                const utxoTx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(utxo.txid));
+                for (const output in utxoTx.outs) {
+                    try {
+                        utxoTx.setWitness(parseInt(output), []);
+                    } catch {}
+                }
+
+                populatedPsbt.addInput({
+                    hash: utxo.txid,
+                    index: utxo.vout,
+                    nonWitnessUtxo: utxoTx.toBuffer(),
+                    ...(redeemScript ? { redeemScript } : {}),
+                });
+
+                totalPaymentValue += utxo.value;
+            }
+
+            for (const dummyUtxo of populatedPsbt.data.inputs) {
+                if (dummyUtxo.witnessUtxo) {
+                    totalDummyValue += dummyUtxo.witnessUtxo.value;
+                }
+            }
+
+            // Calculate change value and add output for change
+            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+            const fee = cryptoModule.calculateFee({
+                vins: populatedPsbt.txInputs.length,
+                vouts: populatedPsbt.txOutputs.length,
+                recommendedFeeRate,
+            });
+
+            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
+
+            populatedPsbt.addOutput({
+                address: payerAddress,
+                value: changeValue,
+            });
+
+            const finalizedTx = await deezyApi.finalizePsbt({
+                psbt: populatedPsbt.toBase64(),
+                id,
+            });
+
+            console.log('finalizedTx', finalizedTx);
+
+            return finalizedTx;
+        },
+
         generatePSBTListingInscriptionForBuy: async ({
             payerAddress,
             payerPubkey,
@@ -280,7 +362,6 @@ const OpenOrdex = function (config) {
                     } catch {}
                 }
 
-                debugger;
                 psbt.addInput({
                     hash: dummyUtxo.txid,
                     index: dummyUtxo.vout,
@@ -357,8 +438,6 @@ const OpenOrdex = function (config) {
                 address: payerAddress,
                 value: changeValue,
             });
-
-            debugger;
 
             return psbt;
         },

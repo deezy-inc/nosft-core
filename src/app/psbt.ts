@@ -61,7 +61,6 @@ const Psbt = function (config) {
         },
 
         signByXverse: async (psbt, inputsToSign) => {
-            debugger;
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -71,7 +70,20 @@ const Psbt = function (config) {
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
                     broadcast: false,
-                    inputsToSign,
+                    inputsToSign: [
+                        {
+                            ...inputsToSign[0],
+                            sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
+                        },
+                        {
+                            ...inputsToSign[1],
+                            sigHash: bitcoin.Transaction.SIGHASH_DEFAULT,
+                        },
+                        {
+                            ...inputsToSign[2],
+                            sigHash: bitcoin.Transaction.SIGHASH_ALL,
+                        },
+                    ],
                 },
                 onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
                     psbtBase64 = _psbtBase64;
@@ -79,6 +91,7 @@ const Psbt = function (config) {
                 onCancel: () => alert('Request canceled.'),
             };
             await signTransaction(signPsbtOptions);
+            debugger;
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             });
@@ -376,7 +389,6 @@ const Psbt = function (config) {
         },
 
         signPsbtMessage: async (psbt, ordinalAddress, paymentAddress) => {
-            debugger;
             let virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
@@ -417,7 +429,7 @@ const Psbt = function (config) {
             virtualToSign.data.inputs.forEach((input, i) => {
                 if (!input.finalScriptWitness) {
                     // @ts-ignore
-                    const tx = bitcoin.Transaction.fromBuffer(virtualToSign.data.inputs[i].nonWitnessUtxo); // TODO: here
+                    const tx = bitcoin.Transaction.fromBuffer(virtualToSign.data.inputs[i].nonWitnessUtxo);
                     const output = tx.outs[virtualToSign.txInputs[i].index];
                     virtualToSign.updateInput(i, {
                         witnessUtxo: output,
@@ -433,8 +445,6 @@ const Psbt = function (config) {
                     witnessValues.push(virtualToSign.data.inputs[i].witnessUtxo.value);
                 }
             });
-
-            debugger;
 
             const inputsToSign: {
                 address: string;
@@ -464,7 +474,6 @@ const Psbt = function (config) {
                         });
                         virtualToSign.finalizeInput(i);
                     } else {
-                        debugger;
                         if (input.redeemScript) {
                             inputsToSign.push({
                                 address: paymentAddress,
@@ -476,15 +485,22 @@ const Psbt = function (config) {
                 }
             }
             if (provider === 'xverse') {
+                for (const input of inputsToSign) {
+                    try {
+                        virtualToSign.finalizeInput(input.index);
+                    } catch (e) {
+                        debugger;
+                        console.log('[error]', input.index);
+                        console.error(e);
+                    }
+                }
                 virtualToSign = await psbtModule.signByXverse(virtualToSign, inputsToSign);
                 debugger;
-                for (const input of inputsToSign) {
-                    virtualToSign.finalizeInput(input.index);
-                }
             }
-            debugger;
-            console.log(virtualToSign.toBase64());
-            return virtualToSign.extractTransaction();
+            console.log('[signByXverse]', virtualToSign.toBase64());
+            const xtr = virtualToSign.extractTransaction();
+            console.log('[signByXverse]', xtr);
+            return xtr;
         },
     };
 
