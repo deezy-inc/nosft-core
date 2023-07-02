@@ -61,6 +61,7 @@ const Psbt = function (config) {
         },
 
         signByXverse: async (psbt, address) => {
+            debugger;
             let psbtBase64 = '';
             const signPsbtOptions = {
                 payload: {
@@ -81,7 +82,7 @@ const Psbt = function (config) {
                         // },
                         {
                             address,
-                            signingIndexes: [3],
+                            signingIndexes: [2],
                             sigHash: bitcoin.Transaction.SIGHASH_ALL,
                         },
                     ],
