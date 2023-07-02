@@ -392,6 +392,16 @@ const Psbt = function (config) {
                         address,
                     });
                 }
+
+                if (provider === 'unisat.io') {
+                    const unisatSigned = await window.unisat.signPsbt(psbt.toHex());
+                    const fromBufffer = Buffer.from(unisatSigned, 'hex');
+
+                    return bitcoin.Psbt.fromBase64(fromBufffer.toString('base64'), {
+                        network: NETWORK,
+                    });
+                }
+
                 // @ts-ignore
                 const sigHash = virtualToSign.__CACHE.__TX.hashForWitnessV1(
                     0,
