@@ -82,7 +82,7 @@ const Psbt = function (config) {
                         // },
                         {
                             address,
-                            signingIndexes: [2],
+                            signingIndexes: [3],
                             sigHash: bitcoin.Transaction.SIGHASH_ALL,
                         },
                     ],
