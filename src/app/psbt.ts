@@ -191,6 +191,11 @@ const Psbt = function (config) {
             if (provider === 'xverse') {
                 return psbtModule.signPsbtForBoostByXverse({ psbt, address });
             }
+
+            if (provider === 'unisat.io') {
+                return window.unisat.signPsbt(psbt.toHex());
+            }
+
             const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
                 0,
                 psbt.data.inputs.map((input) => input.witnessUtxo.script),
