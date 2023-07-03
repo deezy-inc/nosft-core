@@ -48,6 +48,12 @@ const inscriptionts = await getInscriptions(address);
 1. Install [`just`](https://just.systems/)
 2. `just -l`
 
+## Local build
+
+```bash
+npm run watch
+```
+
 ## Usage
 
 You can install the Nosft Core SDK by running:

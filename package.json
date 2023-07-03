@@ -12,6 +12,9 @@
     "files": [
         "./lib/**/*"
     ],
+    "scripts": {
+        "watch": "chokidar 'src/**/*.ts' -c 'just emit-types && just format && just build'"
+    },
     "types": "./lib/index.d.ts",
     "main": "lib/nosft.cjs.js",
     "module": "lib/esm/nosft.mjs",
@@ -48,6 +51,7 @@
         "@types/node": "^18.13.0",
         "@typescript-eslint/eslint-plugin": "^5.51.0",
         "@typescript-eslint/parser": "^5.51.0",
+        "chokidar-cli": "3.0.0",
         "esbuild": "0.16.9",
         "esbuild-plugin-alias": "^0.2.1",
         "eslint": "^8.33.0",
