@@ -14,6 +14,7 @@ import { Crypto } from './crypto';
 import { Address } from './address';
 import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
 import { isMetamaskProvider } from './wallet';
+import Deezy from '../services/deezy';
 
 bitcoin.initEccLib(ecc);
 
@@ -23,7 +24,7 @@ const bip32 = BIP32Factory(ecc);
 const Psbt = function (config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
-
+    const deezyApi = new Deezy(config);
     const psbtModule = {
         getMetamaskSigner: async (metamaskDomain) => {
             // @ts-ignore
@@ -384,7 +385,7 @@ const Psbt = function (config) {
             return finalPsbt;
         },
 
-        signPsbtMessage: async (psbt, address) => {
+        signPsbtMessage: async (psbt, address, getPsbt = false) => {
             const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
@@ -472,7 +473,34 @@ const Psbt = function (config) {
                 }
             }
             console.log(virtualToSign.toBase64());
+            if (getPsbt) {
+                return virtualToSign;
+            }
+
             return virtualToSign.extractTransaction();
+        },
+
+        signPsbtListingForBuy: async ({ psbt, id, ordinalAddress }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            let signedPsbt;
+            if (provider === 'unisat.io') {
+                const finalPopulatedPsbt = await window.unisat.signPsbt(psbt.toHex(), { autoFinalize: false });
+                const buffer = Buffer.from(finalPopulatedPsbt, 'hex');
+                signedPsbt = buffer.toString('base64');
+            } else {
+                const finalPopulatedPsbt = await psbtModule.signPsbtMessage(psbt.toBase64(), ordinalAddress, true);
+                // @ts-ignore
+                signedPsbt = finalPopulatedPsbt.toBase64();
+            }
+
+            const finalizedTx = await deezyApi.finalizePsbt({
+                psbt: signedPsbt,
+                id,
+            });
+
+            console.log('finalizedTx', finalizedTx);
+
+            return finalizedTx;
         },
     };
 

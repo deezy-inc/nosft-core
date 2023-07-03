@@ -4,6 +4,7 @@ import { Address } from './address';
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
+import { NETWORK } from '../config/constants';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 
@@ -200,6 +201,37 @@ const OpenOrdex = function (config) {
             return { selectedUtxos, dummyUtxos };
         },
 
+        getAvailableUtxosWithoutDummies: async ({ address, price, psbt }) => {
+            const payerUtxos = await utxoModule.getAddressUtxos(address);
+            if (!payerUtxos.length) {
+                throw new Error(`No utxos found for address ${address}`);
+            }
+
+            // We require at least 2 dummy utxos for taker
+            const dummyUtxos = [psbt.data.inputs[0].witnessUtxo.value, psbt.data.inputs[1].witnessUtxo.value];
+
+            let minimumValueRequired;
+            let vins;
+            let vouts;
+
+            minimumValueRequired = price + config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE * config.DUMMY_UTXO_VALUE;
+            vins = 1;
+            vouts = 2;
+
+            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+
+            const selectedUtxos = await ordexModule.selectUtxos({
+                utxos: payerUtxos,
+                dummyUtxos,
+                amount: minimumValueRequired,
+                vins,
+                vouts,
+                recommendedFeeRate,
+            });
+
+            return { selectedUtxos, dummyUtxos };
+        },
+
         generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let inputAddressInfo;
@@ -341,6 +373,92 @@ const OpenOrdex = function (config) {
             });
 
             return psbt;
+        },
+
+        generateDeezyPSBTListingForBuy: async ({
+            payerAddress,
+            payerPubkey,
+            price,
+            paymentUtxos,
+            psbt,
+            id,
+            pubKey = null,
+        }) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            let redeemScript;
+
+            if (provider === 'xverse') {
+                // Calculate P2WPKH script
+                const wpkh = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(payerPubkey, 'hex'), network: NETWORK });
+                if (wpkh) {
+                    redeemScript = wpkh.output;
+                }
+            }
+
+            let totalPaymentValue = 0;
+            let totalDummyValue = 0;
+
+            // Add payment utxo inputs
+            for (const utxo of paymentUtxos) {
+                const utxoTx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(utxo.txid));
+                for (const output in utxoTx.outs) {
+                    try {
+                        utxoTx.setWitness(parseInt(output), []);
+                    } catch {}
+                }
+
+                if (provider !== 'unisat.io') {
+                    psbt.addInput({
+                        hash: utxo.txid,
+                        index: utxo.vout,
+                        nonWitnessUtxo: utxoTx.toBuffer(),
+                        ...(redeemScript ? { redeemScript } : {}),
+                        sighashType: bitcoin.Transaction.SIGHASH_ALL,
+                    });
+                }
+
+                if (provider === 'unisat.io') {
+                    const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+                    psbt.addInput({
+                        hash: utxo.txid,
+                        index: utxo.vout,
+                        witnessUtxo: {
+                            value: utxo.value,
+                            // @ts-ignore
+                            script: Buffer.from(inputAddressInfo.output, 'hex'),
+                        },
+                        // @ts-ignore
+                        tapInternalKey: inputAddressInfo.internalPubkey,
+                        // sequence: 0xfffffffd,
+                        sighashType: bitcoin.Transaction.SIGHASH_ALL,
+                    });
+                }
+
+                totalPaymentValue += utxo.value;
+            }
+
+            for (const dummyUtxo of psbt.data.inputs) {
+                if (dummyUtxo.witnessUtxo) {
+                    totalDummyValue += dummyUtxo.witnessUtxo.value;
+                }
+            }
+
+            // Calculate change value and add output for change
+            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+            const fee = cryptoModule.calculateFee({
+                vins: psbt.txInputs.length,
+                vouts: psbt.txOutputs.length,
+                recommendedFeeRate,
+            });
+
+            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
+
+            psbt.addOutput({
+                address: payerAddress,
+                value: changeValue,
+            });
+
+            return { psbt, id };
         },
     };
 
