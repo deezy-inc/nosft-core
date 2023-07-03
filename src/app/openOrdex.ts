@@ -3,6 +3,7 @@ import SessionStorage, { SessionsStorageKeys } from '../services/session-storage
 import { Address } from './address';
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
+import { Psbt } from './psbt';
 import * as bitcoin from 'bitcoinjs-lib';
 import { NETWORK } from '../config/constants';
 // @ts-ignore
@@ -14,6 +15,7 @@ const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
     const addressModule = Address(config);
+    const psbtModule = Psbt(config);
 
     const ordexModule = {
         isSaleOrder: (order) => {
@@ -398,17 +400,21 @@ const OpenOrdex = function (config) {
             let totalPaymentValue = 0;
             let totalDummyValue = 0;
 
+            // For some reason, when adding the input to psbt it doesn't work, it throws an error
+            // but cloning the same psbt to another one works fine
+            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64());
+
             // Add payment utxo inputs
             for (const utxo of paymentUtxos) {
-                const utxoTx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(utxo.txid));
-                for (const output in utxoTx.outs) {
-                    try {
-                        utxoTx.setWitness(parseInt(output), []);
-                    } catch {}
-                }
-
                 if (provider !== 'unisat.io') {
-                    psbt.addInput({
+                    const utxoTx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(utxo.txid));
+                    for (const output in utxoTx.outs) {
+                        try {
+                            utxoTx.setWitness(parseInt(output), []);
+                        } catch {}
+                    }
+
+                    psbtx.addInput({
                         hash: utxo.txid,
                         index: utxo.vout,
                         nonWitnessUtxo: utxoTx.toBuffer(),
@@ -419,19 +425,12 @@ const OpenOrdex = function (config) {
 
                 if (provider === 'unisat.io') {
                     const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
-                    psbt.addInput({
-                        hash: utxo.txid,
-                        index: utxo.vout,
-                        witnessUtxo: {
-                            value: utxo.value,
-                            // @ts-ignore
-                            script: Buffer.from(inputAddressInfo.output, 'hex'),
-                        },
-                        // @ts-ignore
-                        tapInternalKey: inputAddressInfo.internalPubkey,
-                        // sequence: 0xfffffffd,
+                    const inputParams = await psbtModule.getInputParams({
+                        utxo,
+                        inputAddressInfo,
                         sighashType: bitcoin.Transaction.SIGHASH_ALL,
                     });
+                    psbtx.addInput(inputParams);
                 }
 
                 totalPaymentValue += utxo.value;
@@ -453,12 +452,12 @@ const OpenOrdex = function (config) {
 
             const changeValue = totalPaymentValue - totalDummyValue - price - fee;
 
-            psbt.addOutput({
+            psbtx.addOutput({
                 address: payerAddress,
                 value: changeValue,
             });
 
-            return { psbt, id };
+            return { psbt: psbtx, id };
         },
     };
 

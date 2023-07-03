@@ -14,7 +14,6 @@ import { Crypto } from './crypto';
 import { Address } from './address';
 import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
 import { isMetamaskProvider } from './wallet';
-import Deezy from '../services/deezy';
 
 bitcoin.initEccLib(ecc);
 
@@ -24,7 +23,7 @@ const bip32 = BIP32Factory(ecc);
 const Psbt = function (config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
-    const deezyApi = new Deezy(config);
+
     const psbtModule = {
         getMetamaskSigner: async (metamaskDomain) => {
             // @ts-ignore
@@ -480,7 +479,7 @@ const Psbt = function (config) {
             return virtualToSign.extractTransaction();
         },
 
-        signPsbtListingForBuy: async ({ psbt, id, ordinalAddress }) => {
+        signPsbtListingForBuy: async ({ psbt, ordinalAddress }): Promise<string> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let signedPsbt;
             if (provider === 'unisat.io') {
@@ -493,14 +492,7 @@ const Psbt = function (config) {
                 signedPsbt = finalPopulatedPsbt.toBase64();
             }
 
-            const finalizedTx = await deezyApi.finalizePsbt({
-                psbt: signedPsbt,
-                id,
-            });
-
-            console.log('finalizedTx', finalizedTx);
-
-            return finalizedTx;
+            return signedPsbt;
         },
     };
 
