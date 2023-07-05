@@ -1,6 +1,6 @@
 import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371.js';
 import { ethers } from 'ethers';
-import { BitcoinNetwork, SignTransactionOptions, signTransaction } from 'sats-connect';
+import { BitcoinNetwork, InputToSign, SignTransactionOptions, signTransaction } from 'sats-connect';
 
 import { ECPairFactory } from 'ecpair';
 import { BIP32Factory } from 'bip32';
@@ -483,6 +483,20 @@ const Psbt = function (config) {
             return virtualToSign.extractTransaction();
         },
         signBuyOrderWithXverse: async ({ psbt, address }) => {
+            const inputsToSign: InputToSign[] = [];
+            console.log('signBuyOrderWithXverse', psbt.toBase64());
+            const currentPsbt = bitcoin.Psbt.fromBase64(psbt.toBase64(), {
+                network: NETWORK,
+            });
+            for (const [i, input] of currentPsbt.data.inputs.entries()) {
+                if (input.redeemScript) {
+                    inputsToSign.push({
+                        address,
+                        signingIndexes: [i],
+                        sigHash: bitcoin.Transaction.SIGHASH_ALL,
+                    });
+                }
+            }
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -493,13 +507,7 @@ const Psbt = function (config) {
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
                     broadcast: false,
-                    inputsToSign: [
-                        {
-                            address,
-                            signingIndexes: [3],
-                            sigHash: bitcoin.Transaction.SIGHASH_ALL,
-                        },
-                    ],
+                    inputsToSign,
                 },
             };
 

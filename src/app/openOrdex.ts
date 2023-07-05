@@ -377,7 +377,6 @@ const OpenOrdex = function (config) {
 
             return psbt;
         },
-
         calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt }) => {
             let totalPaymentValue = 0;
             const totalDummyValue = psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
@@ -395,7 +394,6 @@ const OpenOrdex = function (config) {
             const changeValue = totalPaymentValue - totalDummyValue - price - fee;
             return { changeValue, totalPaymentValue, fee, totalDummyValue };
         },
-
         generateDeezyPSBTListingForBuy: async ({
             payerAddress,
             payerPubkey,
@@ -441,7 +439,11 @@ const OpenOrdex = function (config) {
                         hash: utxo.txid,
                         index: utxo.vout,
                         nonWitnessUtxo: utxoTx.toBuffer(),
-                        ...(isXverse ? { redeemScript } : {}),
+                        ...(isXverse
+                            ? {
+                                  redeemScript,
+                              }
+                            : {}),
                         sighashType: bitcoin.Transaction.SIGHASH_ALL,
                     });
                 }
