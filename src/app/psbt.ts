@@ -386,7 +386,7 @@ const Psbt = function (config) {
             return finalPsbt;
         },
 
-        signPsbtMessage: async (psbt, address, getPsbt = false) => {
+        signPsbtMessage: async (psbt, address, getPsbt = false, ignoreFinalizeDummies = false) => {
             const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
@@ -434,7 +434,7 @@ const Psbt = function (config) {
             const witnessValues = [];
             // update all witnesses and values
             virtualToSign.data.inputs.forEach((input, i) => {
-                if (!input.finalScriptWitness) {
+                if (!input.finalScriptWitness && !input.witnessUtxo) {
                     // @ts-ignore
                     const tx = bitcoin.Transaction.fromBuffer(virtualToSign.data.inputs[i].nonWitnessUtxo);
                     const output = tx.outs[virtualToSign.txInputs[i].index];
@@ -455,7 +455,10 @@ const Psbt = function (config) {
             // create and update resultant sighashes
             // eslint-disable-next-line no-restricted-syntax
             for (const [i, input] of virtualToSign.data.inputs.entries()) {
-                if (!input.finalScriptWitness) {
+                const isDummy = i === 0 || i === 1;
+                const finalizeFirstInputs = ignoreFinalizeDummies && isDummy;
+                // Ignore first 2 dummy inputs
+                if (!input.finalScriptWitness && !finalizeFirstInputs) {
                     // @ts-ignore
                     const sigHash = virtualToSign.__CACHE.__TX.hashForWitnessV1(
                         i,
@@ -472,7 +475,7 @@ const Psbt = function (config) {
                     virtualToSign.finalizeInput(i);
                 }
             }
-            console.log(virtualToSign.toBase64());
+
             if (getPsbt) {
                 return virtualToSign;
             }
@@ -536,7 +539,12 @@ const Psbt = function (config) {
                     address: paymentAddress,
                 });
             } else {
-                const finalPopulatedPsbt = await psbtModule.signPsbtMessage(psbt.toBase64(), ordinalAddress, true);
+                const finalPopulatedPsbt = await psbtModule.signPsbtMessage(
+                    psbt.toBase64(),
+                    ordinalAddress,
+                    true,
+                    true
+                );
                 // @ts-ignore
                 signedPsbt = finalPopulatedPsbt.toBase64();
             }

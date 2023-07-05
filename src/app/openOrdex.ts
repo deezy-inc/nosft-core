@@ -203,7 +203,7 @@ const OpenOrdex = function (config) {
             return { selectedUtxos, dummyUtxos };
         },
 
-        getAvailableUtxosWithoutDummies: async ({ address, price, psbt }) => {
+        getAvailableUtxosWithoutDummies: async ({ address, price, psbt, fee }) => {
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -216,11 +216,12 @@ const OpenOrdex = function (config) {
             let vins;
             let vouts;
 
-            minimumValueRequired = price + config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE * config.DUMMY_UTXO_VALUE;
+            minimumValueRequired =
+                price + psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
             vins = 1;
             vouts = 2;
 
-            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+            const recommendedFeeRate = fee || (await cryptoModule.fetchRecommendedFee());
 
             const selectedUtxos = await ordexModule.selectUtxos({
                 utxos: payerUtxos,
@@ -377,7 +378,24 @@ const OpenOrdex = function (config) {
             return psbt;
         },
 
-        // RUB
+        calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt }) => {
+            let totalPaymentValue = 0;
+            const totalDummyValue = psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
+            for (const utxo of paymentUtxos) {
+                totalPaymentValue += utxo.value;
+            }
+
+            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+            const fee = cryptoModule.calculateFee({
+                vins: psbt.txInputs.length + paymentUtxos.length,
+                vouts: psbt.txOutputs.length,
+                recommendedFeeRate,
+            });
+
+            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
+            return { changeValue, totalPaymentValue, fee, totalDummyValue };
+        },
+
         generateDeezyPSBTListingForBuy: async ({
             payerAddress,
             payerPubkey,
@@ -399,12 +417,15 @@ const OpenOrdex = function (config) {
                 }
             }
 
-            let totalPaymentValue = 0;
-            let totalDummyValue = 0;
-
             // For some reason, when adding the input to psbt it doesn't work, it throws an error
             // but cloning the same psbt to another one works fine
-            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64());
+            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: NETWORK });
+
+            // for (const dummyUtxo of psbt.data.inputs) {
+            //     if (dummyUtxo.witnessUtxo) {
+            //         totalDummyValue += dummyUtxo.witnessUtxo.value;
+            //     }
+            // }
 
             // Add payment utxo inputs
             for (const utxo of paymentUtxos) {
@@ -434,25 +455,23 @@ const OpenOrdex = function (config) {
                     });
                     psbtx.addInput(inputParams);
                 }
-
-                totalPaymentValue += utxo.value;
             }
 
-            for (const dummyUtxo of psbt.data.inputs) {
-                if (dummyUtxo.witnessUtxo) {
-                    totalDummyValue += dummyUtxo.witnessUtxo.value;
-                }
-            }
-
-            // Calculate change value and add output for change
-            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
-            const fee = cryptoModule.calculateFee({
-                vins: psbt.txInputs.length,
-                vouts: psbt.txOutputs.length,
-                recommendedFeeRate,
+            const { changeValue, totalPaymentValue, fee } = await ordexModule.calculateRequiredFeeForBuy({
+                price,
+                paymentUtxos,
+                psbt,
             });
 
-            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
+            if (changeValue < 0) {
+                const msg = `Your wallet address doesn't have enough funds to buy this inscription.
+                Price:      ${cryptoModule.satToBtc(price)} BTC
+                Fees:       ${cryptoModule.satToBtc(fee)} BTC
+                You have:   ${cryptoModule.satToBtc(totalPaymentValue)} BTC
+                Required:   ${cryptoModule.satToBtc(price + fee)} BTC
+                Missing:    ${cryptoModule.satToBtc(-changeValue)} BTC`;
+                throw new Error(msg);
+            }
 
             psbtx.addOutput({
                 address: payerAddress,
