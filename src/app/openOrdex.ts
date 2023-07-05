@@ -278,7 +278,7 @@ const OpenOrdex = function (config) {
         },
 
         generatePSBTListingInscriptionForBuy: async ({
-            payerAddress,
+            paymentAddress,
             receiverAddress,
             price,
             paymentUtxos,
@@ -371,7 +371,7 @@ const OpenOrdex = function (config) {
             }
 
             psbt.addOutput({
-                address: payerAddress,
+                address: paymentAddress,
                 value: changeValue,
             });
 
@@ -395,25 +395,17 @@ const OpenOrdex = function (config) {
             return { changeValue, totalPaymentValue, fee, totalDummyValue };
         },
         generateDeezyPSBTListingForBuy: async ({
-            payerAddress,
-            payerPubkey,
+            paymentAddress,
             price,
             paymentUtxos,
             psbt,
             id,
-            pubKey = null,
+            paymentPublicKey,
+            ordinalsPublicKey = null,
         }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
-            let redeemScript;
-
-            if (isXverse) {
-                // Calculate P2WPKH script
-                const wpkh = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(payerPubkey, 'hex'), network: NETWORK });
-                if (wpkh) {
-                    redeemScript = wpkh.output;
-                }
-            }
+            const paymentAddressInfo = isXverse ? await addressModule.getPaymentAddressInfo(paymentPublicKey) : null;
 
             // For some reason, when adding the input to psbt it doesn't work, it throws an error
             // but cloning the same psbt to another one works fine
@@ -435,21 +427,30 @@ const OpenOrdex = function (config) {
                         } catch {}
                     }
 
-                    psbtx.addInput({
+                    const { redeemScript, script } = paymentAddressInfo || {};
+
+                    const inputData = {
                         hash: utxo.txid,
                         index: utxo.vout,
-                        nonWitnessUtxo: utxoTx.toBuffer(),
-                        ...(isXverse
+                        ...(!isXverse ? { nonWitnessUtxo: utxoTx.toBuffer() } : {}),
+                        ...(redeemScript && script
                             ? {
                                   redeemScript,
+                                  witnessUtxo: {
+                                      script: script,
+                                      value: Number(utxo.value),
+                                  },
                               }
                             : {}),
+                        sequence: 0xfffffffd,
                         sighashType: bitcoin.Transaction.SIGHASH_ALL,
-                    });
+                    };
+
+                    psbtx.addInput(inputData);
                 }
 
                 if (provider === 'unisat.io') {
-                    const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+                    const inputAddressInfo = await addressModule.getAddressInfo(ordinalsPublicKey);
                     const inputParams = await psbtModule.getInputParams({
                         utxo,
                         inputAddressInfo,
@@ -476,7 +477,7 @@ const OpenOrdex = function (config) {
             }
 
             psbtx.addOutput({
-                address: payerAddress,
+                address: paymentAddress,
                 value: changeValue,
             });
 
