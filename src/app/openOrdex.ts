@@ -377,7 +377,6 @@ const OpenOrdex = function (config) {
             return psbt;
         },
 
-        // RUB
         generateDeezyPSBTListingForBuy: async ({
             payerAddress,
             payerPubkey,
@@ -420,7 +419,11 @@ const OpenOrdex = function (config) {
                         hash: utxo.txid,
                         index: utxo.vout,
                         nonWitnessUtxo: utxoTx.toBuffer(),
-                        ...(isXverse ? { redeemScript } : {}),
+                        ...(isXverse
+                            ? {
+                                  redeemScript,
+                              }
+                            : {}),
                         sighashType: bitcoin.Transaction.SIGHASH_ALL,
                     });
                 }
