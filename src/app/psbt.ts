@@ -1,6 +1,6 @@
 import { serializeTaprootSignature } from 'bitcoinjs-lib/src/psbt/bip371.js';
 import { ethers } from 'ethers';
-import { BitcoinNetwork, signTransaction } from 'sats-connect';
+import { BitcoinNetwork, SignTransactionOptions, signTransaction } from 'sats-connect';
 
 import { ECPairFactory } from 'ecpair';
 import { BIP32Factory } from 'bip32';
@@ -60,40 +60,11 @@ const Psbt = function (config) {
             return window.nostr.signSchnorr(sigHash.toString('hex'));
         },
 
-        signSigHashByXverse: async (psbt, address) => {
-            let psbtBase64 = '';
-            const signPsbtOptions = {
-                payload: {
-                    network: {
-                        type: NETWORK_NAME,
-                    } as BitcoinNetwork,
-                    message: 'Sign Transaction',
-                    psbtBase64: psbt.toBase64(),
-                    broadcast: false,
-                    inputsToSign: [
-                        {
-                            address,
-                            signingIndexes: [0],
-                        },
-                    ],
-                },
-                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
-                    psbtBase64 = _psbtBase64;
-                },
-                onCancel: () => alert('Request canceled.'),
-            };
-            await signTransaction(signPsbtOptions);
-            const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
-                network: NETWORK,
-            }).finalizeInput(0);
-            return finalPsbt.toHex();
-        },
-
-        signSigHash: ({ sigHash, address }: { sigHash: any; address?: string }) => {
+        signSigHash: ({ sigHash }: { sigHash: any; address?: string }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
             if (provider === 'xverse') {
-                return psbtModule.signSigHashByXverse(sigHash, address);
+                throw new Error('Signing with xverse is not supported yet.');
             }
 
             if (provider === 'unisat.io') {
@@ -158,8 +129,9 @@ const Psbt = function (config) {
         },
 
         signPsbtForBoostByXverse: async ({ psbt, address }) => {
-            let psbtBase64 = '';
-            const signPsbtOptions = {
+            const signPsbtOptions: SignTransactionOptions = {
+                onFinish: () => {},
+                onCancel: () => {},
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -174,15 +146,24 @@ const Psbt = function (config) {
                         },
                     ],
                 },
-                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
-                    psbtBase64 = _psbtBase64;
-                },
-                onCancel: () => alert('Request canceled.'),
             };
-            await signTransaction(signPsbtOptions);
+
+            const psbtBase64 = await new Promise<string>((resolve, reject) => {
+                signPsbtOptions.onFinish = ({ psbtBase64: _psbtBase64 }) => {
+                    resolve(_psbtBase64);
+                };
+
+                signPsbtOptions.onCancel = () => {
+                    reject(new Error('Request canceled.'));
+                };
+
+                signTransaction(signPsbtOptions);
+            });
+
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeInput(0);
+
             return finalPsbt.toHex();
         },
 
@@ -246,8 +227,10 @@ const Psbt = function (config) {
                 destinationBtcAddress,
                 sendFeeRate,
             });
-            let psbtBase64 = '';
-            const signPsbtOptions = {
+
+            const signPsbtOptions: SignTransactionOptions = {
+                onFinish: () => {},
+                onCancel: () => {},
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -262,15 +245,24 @@ const Psbt = function (config) {
                         },
                     ],
                 },
-                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
-                    psbtBase64 = _psbtBase64;
-                },
-                onCancel: () => alert('Request canceled.'),
             };
-            await signTransaction(signPsbtOptions);
+
+            const psbtBase64 = await new Promise<string>((resolve, reject) => {
+                signPsbtOptions.onFinish = ({ psbtBase64: _psbtBase64 }) => {
+                    resolve(_psbtBase64);
+                };
+
+                signPsbtOptions.onCancel = () => {
+                    reject(new Error('Request canceled.'));
+                };
+
+                signTransaction(signPsbtOptions);
+            });
+
             const psbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeAllInputs();
+
             return psbtModule.broadcastPsbt(psbt);
         },
 
@@ -355,8 +347,9 @@ const Psbt = function (config) {
         },
 
         signPsbtListingXverse: async ({ psbt, address }) => {
-            let psbtBase64 = '';
-            const signPsbtOptions = {
+            const signPsbtOptions: SignTransactionOptions = {
+                onFinish: () => {},
+                onCancel: () => {},
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -372,15 +365,24 @@ const Psbt = function (config) {
                         },
                     ],
                 },
-                onFinish: ({ psbtBase64: _psbtBase64, txId: _txId }) => {
-                    psbtBase64 = _psbtBase64;
-                },
-                onCancel: () => alert('Request canceled.'),
             };
-            await signTransaction(signPsbtOptions);
+
+            const psbtBase64 = await new Promise<string>((resolve, reject) => {
+                signPsbtOptions.onFinish = ({ psbtBase64: _psbtBase64 }) => {
+                    resolve(_psbtBase64);
+                };
+
+                signPsbtOptions.onCancel = () => {
+                    reject(new Error('Request canceled.'));
+                };
+
+                signTransaction(signPsbtOptions);
+            });
+
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeInput(0);
+
             return finalPsbt;
         },
 
@@ -477,14 +479,62 @@ const Psbt = function (config) {
 
             return virtualToSign.extractTransaction();
         },
+        signBuyOrderWithXverse: async ({ psbt, address }) => {
+            const signPsbtOptions: SignTransactionOptions = {
+                onFinish: () => {},
+                onCancel: () => {},
+                payload: {
+                    network: {
+                        type: NETWORK_NAME,
+                    } as BitcoinNetwork,
+                    message: 'Sign Transaction',
+                    psbtBase64: psbt.toBase64(),
+                    broadcast: false,
+                    inputsToSign: [
+                        {
+                            address,
+                            signingIndexes: [3],
+                            sigHash: bitcoin.Transaction.SIGHASH_ALL,
+                        },
+                    ],
+                },
+            };
 
-        signPsbtListingForBuy: async ({ psbt, ordinalAddress }): Promise<string> => {
+            const signedPsbtBase64: string = await new Promise((resolve, reject) => {
+                signPsbtOptions.onFinish = ({ psbtBase64: _psbtBase64, txId: _txId }) => {
+                    resolve(_psbtBase64);
+                };
+                signPsbtOptions.onCancel = () => {
+                    reject(new Error('Request canceled.'));
+                };
+                try {
+                    signTransaction(signPsbtOptions);
+                } catch (error) {
+                    console.error(error);
+                    reject(error);
+                }
+            });
+
+            const finalPsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64, {
+                network: NETWORK,
+            }).finalizeInput(3);
+
+            return finalPsbt.toBase64();
+        },
+
+        // RUB
+        signPsbtListingForBuy: async ({ psbt, ordinalAddress, paymentAddress }): Promise<string> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let signedPsbt;
             if (provider === 'unisat.io') {
                 const finalPopulatedPsbt = await window.unisat.signPsbt(psbt.toHex(), { autoFinalize: false });
                 const buffer = Buffer.from(finalPopulatedPsbt, 'hex');
                 signedPsbt = buffer.toString('base64');
+            } else if (provider === 'xverse') {
+                signedPsbt = await psbtModule.signBuyOrderWithXverse({
+                    psbt,
+                    address: paymentAddress,
+                });
             } else {
                 const finalPopulatedPsbt = await psbtModule.signPsbtMessage(psbt.toBase64(), ordinalAddress, true);
                 // @ts-ignore

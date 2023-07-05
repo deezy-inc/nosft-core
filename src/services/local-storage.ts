@@ -40,6 +40,21 @@ const LocalStorage = {
 
         return window.localStorage.clear();
     },
+    removePattern: (pattern) => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+
+            if (key?.startsWith(pattern)) {
+                localStorage.removeItem(key);
+            }
+        }
+
+        return undefined;
+    },
 };
 
 export default LocalStorage;
