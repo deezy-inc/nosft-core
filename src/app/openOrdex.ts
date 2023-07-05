@@ -377,6 +377,7 @@ const OpenOrdex = function (config) {
             return psbt;
         },
 
+        // RUB
         generateDeezyPSBTListingForBuy: async ({
             payerAddress,
             payerPubkey,
@@ -387,9 +388,10 @@ const OpenOrdex = function (config) {
             pubKey = null,
         }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            const isXverse = provider === 'xverse';
             let redeemScript;
 
-            if (provider === 'xverse') {
+            if (isXverse) {
                 // Calculate P2WPKH script
                 const wpkh = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(payerPubkey, 'hex'), network: NETWORK });
                 if (wpkh) {
@@ -418,7 +420,7 @@ const OpenOrdex = function (config) {
                         hash: utxo.txid,
                         index: utxo.vout,
                         nonWitnessUtxo: utxoTx.toBuffer(),
-                        ...(redeemScript ? { redeemScript } : {}),
+                        ...(isXverse ? { redeemScript } : {}),
                         sighashType: bitcoin.Transaction.SIGHASH_ALL,
                     });
                 }

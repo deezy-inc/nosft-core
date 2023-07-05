@@ -1,7 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
-import { AddressPurposes, BitcoinNetwork, getAddress } from 'sats-connect';
+import { AddressPurposes, BitcoinNetwork, GetAddressOptions, getAddress } from 'sats-connect';
 import { ethers } from 'ethers';
 import { BIP32Factory } from 'bip32';
 import { Crypto } from './crypto';
@@ -14,6 +14,13 @@ const bip32 = BIP32Factory(ecc);
 // https://github.com/LegReq/bip0322-signatures/blob/master/BIP0322_signing.ipynb
 
 export const isMetamaskProvider = (provider: string) => METAMASK_PROVIDERS.includes(provider);
+
+type WalletKeys = {
+    ordinalsPublicKey: string;
+    paymentPublicKey: string;
+    ordinalsAddress: string;
+    paymentAddress: string;
+};
 
 const Wallet = function (config) {
     const cryptoModule = Crypto(config);
@@ -57,11 +64,10 @@ const Wallet = function (config) {
             // @ts-ignore
             return window.nostr.getPublicKey();
         },
-        getXverseKeys: async () => {
-            let ordinalsPublicKey = '';
-            let paymentAddress = '';
-            let ordinalsAddress = '';
-            const getAddressOptions = {
+        getXverseKeys: async (): Promise<WalletKeys> => {
+            const getAddressOptions: GetAddressOptions = {
+                onCancel: () => {},
+                onFinish: () => {},
                 payload: {
                     purposes: ['ordinals', 'payment'] as AddressPurposes[],
                     message: 'Address for receiving Ordinals',
@@ -69,36 +75,49 @@ const Wallet = function (config) {
                         type: NETWORK_NAME,
                     } as BitcoinNetwork,
                 },
-                onFinish: (response) => {
-                    const { publicKey, address: walletOrdinalAddress } = response.addresses.find(
-                        (address) => address.purpose === 'ordinals'
-                    );
-                    ordinalsPublicKey = publicKey.toString('hex');
-                    const { address: walletPaymentAddress } = response.addresses.find(
-                        (address) => address.purpose === 'payment'
-                    );
-                    paymentAddress = walletPaymentAddress;
-                    ordinalsAddress = walletOrdinalAddress;
-                },
-                onCancel: () => alert('Request canceled.'),
             };
 
-            await getAddress(getAddressOptions);
-            return { ordinalsPublicKey, ordinalsAddress, paymentAddress };
+            const wallet = await new Promise<WalletKeys>((resolve, reject) => {
+                getAddressOptions.onFinish = (response) => {
+                    const { publicKey: xOrdinalPublicKey, address: xOrdinalAddress } = response.addresses.find(
+                        (address) => address.purpose === 'ordinals'
+                    ) || { publicKey: '', address: '' };
+                    const { publicKey: xPaymentPublicKey, address: xPaymentAddress } = response.addresses.find(
+                        (address) => address.purpose === 'payment'
+                    ) || { publicKey: '', address: '' };
+
+                    resolve({
+                        ordinalsPublicKey: xOrdinalPublicKey,
+                        paymentPublicKey: xPaymentPublicKey,
+                        ordinalsAddress: xOrdinalAddress,
+                        paymentAddress: xPaymentAddress,
+                    });
+                };
+
+                getAddressOptions.onCancel = () => {
+                    reject(new Error('Request canceled.'));
+                };
+
+                getAddress(getAddressOptions);
+            });
+
+            return wallet;
         },
         connectWallet: async (provider) => {
             const walletName = provider?.split('.')[0] || '';
             let ordinalsPublicKey = '';
+            let paymentPublicKey = '';
             let ordinalsAddress = '';
             let paymentAddress = '';
 
             if (provider === 'unisat.io' && window.unisat) {
                 ordinalsPublicKey = await walletModule.getUnisatPubKey();
             } else if (provider === 'xverse') {
-                const xverseKeys = await walletModule.getXverseKeys();
-                ordinalsPublicKey = xverseKeys.ordinalsPublicKey;
-                ordinalsAddress = xverseKeys.ordinalsAddress;
-                paymentAddress = xverseKeys.paymentAddress;
+                const xverse = await walletModule.getXverseKeys();
+                ordinalsPublicKey = xverse.ordinalsPublicKey;
+                paymentPublicKey = xverse.paymentPublicKey;
+                ordinalsAddress = xverse.ordinalsAddress;
+                paymentAddress = xverse.paymentAddress;
                 // provider === 'alby'
             } else if (window.ethereum && isMetamaskProvider(provider)) {
                 ordinalsPublicKey = (await walletModule.getEthPubKey()) || '';
@@ -108,6 +127,7 @@ const Wallet = function (config) {
             return {
                 walletName,
                 ordinalsPublicKey,
+                paymentPublicKey,
                 ordinalsAddress,
                 paymentAddress,
             };

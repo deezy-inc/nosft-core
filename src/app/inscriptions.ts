@@ -7,6 +7,9 @@ const Inscriptions = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
     const inscriptionsModule = {
+        invalidateOutputsCache: () => {
+            LocalStorage.removePattern(`${LocalStorageKeys.INSCRIPTIONS_OUTPOINT}:`);
+        },
         // TODO: Implement also some type of server side caching.
         getOutpointFromCache: async (inscriptionId) => {
             try {
