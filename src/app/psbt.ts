@@ -399,10 +399,9 @@ const Psbt = function (config) {
                 }
 
                 if (provider === 'unisat.io') {
-                    const unisatSigned = await window.unisat.signPsbt(psbt.toHex());
-                    const fromBufffer = Buffer.from(unisatSigned, 'hex');
+                    const unisatSigned = await window.unisat.signPsbt(virtualToSign.toHex());
 
-                    return bitcoin.Psbt.fromBase64(fromBufffer.toString('base64'), {
+                    return bitcoin.Psbt.fromHex(unisatSigned, {
                         network: NETWORK,
                     });
                 }
