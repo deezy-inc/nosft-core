@@ -488,8 +488,9 @@ const Psbt = function (config) {
             const currentPsbt = bitcoin.Psbt.fromBase64(psbt.toBase64(), {
                 network: NETWORK,
             });
+
             for (const [i, input] of currentPsbt.data.inputs.entries()) {
-                if (input.redeemScript) {
+                if (input.sighashType === bitcoin.Transaction.SIGHASH_ALL && input.redeemScript) {
                     inputsToSign.push({
                         address,
                         signingIndexes: [i],
@@ -528,12 +529,15 @@ const Psbt = function (config) {
 
             const finalPsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64, {
                 network: NETWORK,
-            }).finalizeInput(3);
+            });
+
+            for (const i in inputsToSign) {
+                finalPsbt.finalizeInput(inputsToSign[i].signingIndexes[0]);
+            }
 
             return finalPsbt.toBase64();
         },
 
-        // RUB
         signPsbtListingForBuy: async ({ psbt, ordinalAddress, paymentAddress }): Promise<string> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let signedPsbt;
