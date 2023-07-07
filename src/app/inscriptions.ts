@@ -87,7 +87,21 @@ const Inscriptions = function (config) {
 
             const inscriptionsByUtxoKey = await inscriptionsModule.getInscriptionsByUtxoKey(inscriptions);
 
-            return inscriptionsModule.addInscriptionDataToUtxos(utxos, inscriptionsByUtxoKey);
+            const addressInscriptions = await inscriptionsModule.addInscriptionDataToUtxos(
+                utxos,
+                inscriptionsByUtxoKey
+            );
+
+            // Once a new inscription is added, invalidate the cache so that it shows up right away
+            // without having to wait for the cache to expire.
+            const key = `${LocalStorageKeys.INSCRIPTIONS}:${address}`;
+            const localAddressInscriptions = await LocalStorage.get(key);
+            if (localAddressInscriptions && localAddressInscriptions.length !== addressInscriptions.length) {
+                inscriptionsModule.invalidateOutputsCache();
+                await LocalStorage.set(key, addressInscriptions);
+            }
+
+            return addressInscriptions;
         },
 
         getInscription: async (inscriptionId) => {
