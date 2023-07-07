@@ -203,7 +203,7 @@ const OpenOrdex = function (config) {
             return { selectedUtxos, dummyUtxos };
         },
 
-        getAvailableUtxosWithoutDummies: async ({ address, price, psbt, fee }) => {
+        getAvailableUtxosWithoutDummies: async ({ address, price, psbt, fee, selectedFeeRate }) => {
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -221,7 +221,7 @@ const OpenOrdex = function (config) {
             vins = 1;
             vouts = 2;
 
-            const recommendedFeeRate = fee || (await cryptoModule.fetchRecommendedFee());
+            const feeRate = fee || selectedFeeRate || (await cryptoModule.fetchRecommendedFee());
 
             const selectedUtxos = await ordexModule.selectUtxos({
                 utxos: payerUtxos,
@@ -229,7 +229,7 @@ const OpenOrdex = function (config) {
                 amount: minimumValueRequired,
                 vins,
                 vouts,
-                recommendedFeeRate,
+                recommendedFeeRate: feeRate,
             });
 
             return { selectedUtxos, dummyUtxos };
@@ -377,18 +377,18 @@ const OpenOrdex = function (config) {
 
             return psbt;
         },
-        calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt }) => {
+        calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt, selectedFeeRate }) => {
             let totalPaymentValue = 0;
             const totalDummyValue = psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
             for (const utxo of paymentUtxos) {
                 totalPaymentValue += utxo.value;
             }
 
-            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
+            const feeRate = selectedFeeRate || (await cryptoModule.fetchRecommendedFee());
             const fee = cryptoModule.calculateFee({
                 vins: psbt.txInputs.length + paymentUtxos.length,
                 vouts: psbt.txOutputs.length,
-                recommendedFeeRate,
+                recommendedFeeRate: feeRate,
             });
 
             const changeValue = totalPaymentValue - totalDummyValue - price - fee;
@@ -402,6 +402,7 @@ const OpenOrdex = function (config) {
             id,
             paymentPublicKey,
             ordinalsPublicKey = null,
+            selectedFeeRate = null,
         }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
@@ -464,6 +465,7 @@ const OpenOrdex = function (config) {
                 price,
                 paymentUtxos,
                 psbt,
+                selectedFeeRate,
             });
 
             if (changeValue < 0) {
