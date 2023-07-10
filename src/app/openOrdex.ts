@@ -9,6 +9,11 @@ import { NETWORK } from '../config/constants';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 
+function isHexadecimal(str: string): boolean {
+    const hexRegex = /^[0-9A-Fa-f]*$/;
+    return str.length % 2 === 0 && hexRegex.test(str);
+}
+
 bitcoin.initEccLib(ecc);
 
 const OpenOrdex = function (config) {
@@ -94,9 +99,22 @@ const OpenOrdex = function (config) {
         },
 
         getOrderInformation: async (order) => {
-            const sellerSignedPsbt = bitcoin.Psbt.fromBase64(order.content, {
-                network: config.NETWORK,
-            });
+            let sellerSignedPsbt: bitcoin.Psbt;
+
+            const psbtContent = order.content;
+
+            try {
+                sellerSignedPsbt = isHexadecimal(psbtContent)
+                    ? bitcoin.Psbt.fromHex(psbtContent, {
+                          network: config.NETWORK,
+                      })
+                    : bitcoin.Psbt.fromBase64(psbtContent, {
+                          network: config.NETWORK,
+                      });
+            } catch (error) {
+                console.error(error);
+                throw new Error('Invalid PSBT', psbtContent);
+            }
 
             const inscriptionId = ordexModule.getInscriptionId(order);
 
