@@ -74,7 +74,7 @@ const OpenOrdex = function (config) {
             return data;
         },
 
-        validatePbst: (psbt, utxo) => {
+        validatePbst: (psbt, utxo, validateSignatures = false) => {
             const sellerInput = psbt.txInputs[0];
             const sellerSignedPsbtInput = `${sellerInput.hash.reverse().toString('hex')}:${sellerInput.index}`;
 
@@ -101,17 +101,19 @@ const OpenOrdex = function (config) {
                 }
             }
 
-            try {
-                const input = psbt.data.inputs[0];
-                const validator = input.tapInternalKey ? schnorrValidator : ecdsaValidator;
+            if (validateSignatures) {
+                try {
+                    const input = psbt.data.inputs[0];
+                    const validator = input.tapInternalKey ? schnorrValidator : ecdsaValidator;
 
-                const valid = psbt.validateSignaturesOfAllInputs(validator);
-                if (!valid) {
-                    throw new Error('Invalid signature');
+                    const valid = psbt.validateSignaturesOfAllInputs(validator);
+                    if (!valid) {
+                        throw new Error('Invalid signature');
+                    }
+                } catch (e) {
+                    // @ts-ignores
+                    throw new Error(`Invalid PSBT ${e.message || e}`);
                 }
-            } catch (e) {
-                // @ts-ignores
-                throw new Error(`Invalid PSBT ${e.message || e}`);
             }
         },
 
