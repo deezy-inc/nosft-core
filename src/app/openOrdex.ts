@@ -8,6 +8,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import { NETWORK } from '../config/constants';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
+import { ECPairFactory } from 'ecpair';
 
 function isHexadecimal(str: string): boolean {
     const hexRegex = /^[0-9A-Fa-f]*$/;
@@ -15,6 +16,14 @@ function isHexadecimal(str: string): boolean {
 }
 
 bitcoin.initEccLib(ecc);
+
+const schnorrValidator = (pubkey, msghash, signature) => {
+    return ecc.verifySchnorr(msghash, pubkey, signature);
+};
+
+const ecdsaValidator = (pubkey, msghash, signature) => {
+    return ECPairFactory(ecc).fromPublicKey(pubkey).verify(msghash, signature);
+};
 
 const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
@@ -90,6 +99,19 @@ const OpenOrdex = function (config) {
                     // @ts-ignore
                     throw new Error(`Invalid PSBT ${e.message || e}`);
                 }
+            }
+
+            try {
+                const input = psbt.data.inputs[0];
+                const validator = input.tapInternalKey ? schnorrValidator : ecdsaValidator;
+
+                const valid = psbt.validateSignaturesOfAllInputs(validator);
+                if (!valid) {
+                    throw new Error('Invalid signature');
+                }
+            } catch (e) {
+                // @ts-ignores
+                throw new Error(`Invalid PSBT ${e.message || e}`);
             }
         },
 
