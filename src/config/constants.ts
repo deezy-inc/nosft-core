@@ -17,7 +17,6 @@ export const ORDINALS_EXPLORER_URL = TESTNET
 export const RELAYS = [
     'wss://nostr.openordex.org',
     NOSTR_RELAY_URL,
-    'wss://nostr-pub.wellorder.net',
     'wss://nostr.bitcoiner.social',
     'wss://relay.damus.io',
 ];

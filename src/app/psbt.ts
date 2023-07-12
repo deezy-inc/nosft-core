@@ -20,11 +20,35 @@ bitcoin.initEccLib(ecc);
 const ECPair = ECPairFactory(ecc);
 const bip32 = BIP32Factory(ecc);
 
+function isHexadecimal(str) {
+    const hexRegex = /^[0-9A-Fa-f]*$/;
+    return str.length % 2 === 0 && hexRegex.test(str);
+}
+
+const getPsbt = (psbtContent) => {
+    const psbt = isHexadecimal(psbtContent)
+        ? bitcoin.Psbt.fromHex(psbtContent, {
+              network: NETWORK,
+          })
+        : bitcoin.Psbt.fromBase64(psbtContent, {
+              network: NETWORK,
+          });
+
+    return psbt;
+};
+
+const getPsbtBase64 = (psbtContent) => {
+    const buffer = Buffer.from(psbtContent, 'hex');
+    return buffer.toString('base64');
+};
+
 const Psbt = function (config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
 
     const psbtModule = {
+        getPsbt,
+        getPsbtBase64,
         getMetamaskSigner: async (metamaskDomain) => {
             // @ts-ignore
             const { ethereum } = window;
