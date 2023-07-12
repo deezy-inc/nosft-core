@@ -10,11 +10,6 @@ import { NETWORK } from '../config/constants';
 import * as ecc from 'tiny-secp256k1';
 import { ECPairFactory } from 'ecpair';
 
-function isHexadecimal(str: string): boolean {
-    const hexRegex = /^[0-9A-Fa-f]*$/;
-    return str.length % 2 === 0 && hexRegex.test(str);
-}
-
 bitcoin.initEccLib(ecc);
 
 const schnorrValidator = (pubkey, msghash, signature) => {
@@ -128,13 +123,7 @@ const OpenOrdex = function (config) {
             const psbtContent = order.content;
 
             try {
-                sellerSignedPsbt = isHexadecimal(psbtContent)
-                    ? bitcoin.Psbt.fromHex(psbtContent, {
-                          network: config.NETWORK,
-                      })
-                    : bitcoin.Psbt.fromBase64(psbtContent, {
-                          network: config.NETWORK,
-                      });
+                sellerSignedPsbt = psbtModule.getPsbt(psbtContent);
             } catch (error) {
                 console.error(error);
                 throw new Error('Invalid PSBT', psbtContent);
