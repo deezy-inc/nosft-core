@@ -29,7 +29,7 @@ const Wallet = function (config) {
             await window.unisat.requestAccounts();
             return window.unisat.getPublicKey();
         },
-        getEthPubKey: async () => {
+        getEthPubKey: async (metamaskDomain) => {
             const { ethereum } = window;
             let ethAddress = ethereum.selectedAddress;
             if (!ethAddress) {
@@ -39,7 +39,7 @@ const Wallet = function (config) {
             // @ts-ignore
             const provider = new ethers.providers.Web3Provider(window.ethereum);
 
-            const toSign = `0x${Buffer.from(config.TAPROOT_MESSAGE(provider)).toString('hex')}`;
+            const toSign = `0x${Buffer.from(config.TAPROOT_MESSAGE(metamaskDomain)).toString('hex')}`;
             const signature = await provider.send('personal_sign', [toSign, ethAddress]);
             const seed = ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.arrayify(signature)));
             const root = bip32.fromSeed(Buffer.from(seed));
@@ -120,7 +120,7 @@ const Wallet = function (config) {
                 paymentAddress = xverse.paymentAddress;
                 // provider === 'alby'
             } else if (window.ethereum && isMetamaskProvider(provider)) {
-                ordinalsPublicKey = (await walletModule.getEthPubKey()) || '';
+                ordinalsPublicKey = (await walletModule.getEthPubKey(provider)) || '';
             } else {
                 ordinalsPublicKey = await walletModule.getNostrPubKey();
             }
