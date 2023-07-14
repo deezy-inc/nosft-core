@@ -122,7 +122,8 @@ const Inscriptions = function (config) {
             // get value of the utxo
             const { value } = utxo.vout[vout];
 
-            if (inscriptionData?.collection?.name) {
+            // Our turbo api returns the collection data already, let's get it if it's not there
+            if (inscriptionData?.collection?.name && !inscriptionData?.collection?.icon) {
                 try {
                     const { data: collection } = await axios.get(
                         `${config.TURBO_API}/collection/${inscriptionData?.collection?.slug}`
@@ -131,6 +132,8 @@ const Inscriptions = function (config) {
                 } catch (e) {
                     console.warn('No collection found');
                 }
+            } else {
+                props.collection = inscriptionData?.collection;
             }
 
             props.inscription = { ...inscriptionData, inscriptionId, ...utxo, vout, value, owner };
