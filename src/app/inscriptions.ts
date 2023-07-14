@@ -104,18 +104,29 @@ const Inscriptions = function (config) {
             return addressInscriptions;
         },
 
-        getInscription: async (inscriptionId) => {
-            const props: any = {};
+        getTxidVout: async (inscriptionData) => {
+            if (inscriptionData.output) {
+                const [txid, vout] = inscriptionData.output.split(':');
+                return { txid, vout, owner: inscriptionData.owner };
+            }
 
-            const { data: inscriptionData } = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}`);
-
-            const outpointResult = await inscriptionsModule.getOutpointFromCache(inscriptionId);
+            const outpointResult = await inscriptionsModule.getOutpointFromCache(inscriptionData.id);
             const {
                 inscription: { outpoint },
                 owner,
             } = outpointResult;
 
             const [txid, vout] = cryptoModule.parseOutpoint(outpoint);
+
+            return { txid, vout, owner };
+        },
+
+        getInscription: async (inscriptionId) => {
+            const props: any = {};
+
+            const { data: inscriptionData } = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}`);
+
+            const { txid, vout, owner } = await inscriptionsModule.getTxidVout(inscriptionData);
             // Get related transaction
             const { data: utxo } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}`);
 
