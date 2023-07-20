@@ -77,6 +77,10 @@ class Auction extends ApiService {
     public async getByAddress(address: string): Promise<Array<AuctionInscription>> {
         return this.get(`/auctions/address/${address}`);
     }
+
+    public async getByCollection(collection: string): Promise<Array<AuctionInscription>> {
+        return this.get(`/auctions/collection/${collection}`);
+    }
 }
 
 const auctionService = (config: Config) => new Auction(config);

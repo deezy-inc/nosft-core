@@ -11,6 +11,19 @@ const Nostr = function (config: Config) {
     const utxoModule = Utxo(config);
     const nostrPool = _nostrPool(config);
     const nostrModule = {
+        filterOrders: async (orders) => {
+            for (const order of orders) {
+                try {
+                    const orderInformation = await ordexModule.getOrderInformation(order);
+                    // @ts-ignore
+                    if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
+                        return orderInformation;
+                    }
+                } catch (e) {
+                    return undefined;
+                }
+            }
+        },
         getNostrInscription: async (inscription) => {
             const utxo = `${inscription.txid}:${inscription.vout}`;
             const orders = (
@@ -43,6 +56,39 @@ const Nostr = function (config: Config) {
             }
             return undefined;
         },
+        getNostrInscriptions: async (inscriptionIds) => {
+            const nostrOrders = (
+                await nostrPool.list([
+                    {
+                        kinds: [config.NOSTR_KIND_INSCRIPTION],
+                        '#i': inscriptionIds,
+                    },
+                ])
+            )
+                .filter((a) => a.tags.find((x) => x?.[0] === 's')?.[1])
+                .sort(
+                    (a, b) =>
+                        // @ts-ignore
+                        Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
+                );
+
+            // group orders by id into multiple arrays
+            const groupedOrders = nostrOrders.reduce((acc, order) => {
+                const inscriptionId = order.id;
+                if (!acc[inscriptionId]) {
+                    acc[inscriptionId] = [];
+                }
+                acc[inscriptionId].push(order);
+                return acc;
+            }, {});
+
+            const result: Array<any> = [];
+            for (const [, orders] of Object.entries(groupedOrders)) {
+                const order = await nostrModule.filterOrders(orders);
+                if (order) result.push(order);
+            }
+            return result;
+        },
         getLatestNostrInscription: async (inscription) => {
             const utxo = `${inscription.txid}:${inscription.vout}`;
             const orders = (
@@ -60,18 +106,7 @@ const Nostr = function (config: Config) {
                         Number(a.created_at) - Number(b.created_at)
                 );
 
-            for (const order of orders) {
-                try {
-                    const orderInformation = await ordexModule.getOrderInformation(order);
-                    // @ts-ignore
-                    if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
-                        return orderInformation;
-                    }
-                } catch (e) {
-                    return undefined;
-                }
-            }
-            return undefined;
+            return nostrModule.filterOrders(orders);
         },
 
         getNostrInscriptionByEventId: async (eventId) => {
@@ -90,18 +125,7 @@ const Nostr = function (config: Config) {
                         Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
                 );
 
-            for (const order of orders) {
-                try {
-                    const orderInformation = await ordexModule.getOrderInformation(order);
-                    // @ts-ignore
-                    if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
-                        return orderInformation;
-                    }
-                } catch (e) {
-                    return undefined;
-                }
-            }
-            return undefined;
+            return nostrModule.filterOrders(orders);
         },
 
         getEvent: ({

@@ -121,7 +121,7 @@ const Inscriptions = function (config) {
         },
 
         // getUtxo to failed
-        getInscription: async (inscriptionId, getUtxo = false) => {
+        getInscription: async (inscriptionId, getUtxo = true) => {
             const props: any = {};
 
             const { data: inscriptionData } = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}`);
