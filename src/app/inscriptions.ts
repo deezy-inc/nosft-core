@@ -109,7 +109,6 @@ const Inscriptions = function (config) {
                 const [txid, vout] = inscriptionData.output.split(':');
                 return { txid, vout, owner: inscriptionData.owner };
             }
-
             const outpointResult = await inscriptionsModule.getOutpointFromCache(inscriptionData.id);
             const {
                 inscription: { outpoint },
@@ -121,17 +120,13 @@ const Inscriptions = function (config) {
             return { txid, vout, owner };
         },
 
-        getInscription: async (inscriptionId) => {
+        // getUtxo to failed
+        getInscription: async (inscriptionId, getUtxo = true) => {
             const props: any = {};
 
             const { data: inscriptionData } = await axios.get(`${config.TURBO_API}/inscription/${inscriptionId}`);
 
             const { txid, vout, owner } = await inscriptionsModule.getTxidVout(inscriptionData);
-            // Get related transaction
-            const { data: utxo } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}`);
-
-            // get value of the utxo
-            const { value } = utxo.vout[vout];
 
             // Our turbo api returns the collection data already, let's get it if it's not there
             if (inscriptionData?.collection?.name && !inscriptionData?.collection?.icon) {
@@ -147,7 +142,19 @@ const Inscriptions = function (config) {
                 props.collection = inscriptionData?.collection;
             }
 
-            props.inscription = { ...inscriptionData, inscriptionId, ...utxo, vout, value, owner };
+            props.inscription = {
+                ...inscriptionData,
+                inscriptionId,
+                vout,
+                value: inscriptionData.sats,
+                owner,
+            };
+
+            if (getUtxo) {
+                // Get related transaction
+                const { data: utxo } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}`);
+                props.utxo = utxo;
+            }
 
             return props;
         },

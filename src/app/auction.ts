@@ -75,6 +75,16 @@ const Auction = function (config: Config) {
             return auctions;
         },
 
+        getAuctionByCollection: async (collection) => {
+            const auctions = await auctionService.getByCollection(collection);
+            return auctions;
+        },
+
+        listAuctionInscriptions: async () => {
+            const auctions = await auctionService.list();
+            return auctions;
+        },
+
         createAuction: async (auction: AuctionInput) => {
             return auctionService.create(auction);
         },
