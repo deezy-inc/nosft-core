@@ -14,6 +14,9 @@ const Nostr = function (config: Config) {
         filterOrders: async (orders) => {
             for (const order of orders) {
                 try {
+                    const isUtxoSpent = await utxoModule.isSpent({ output: order.tags.find((x) => x?.[0] === 'u')[1] });
+                    if (isUtxoSpent.spent) continue;
+
                     const orderInformation = await ordexModule.getOrderInformation(order);
                     // @ts-ignore
                     if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
@@ -90,12 +93,11 @@ const Nostr = function (config: Config) {
             return result;
         },
         getLatestNostrInscription: async (inscription) => {
-            const utxo = `${inscription.txid}:${inscription.vout}`;
             const orders = (
                 await nostrPool.list([
                     {
                         kinds: [config.NOSTR_KIND_INSCRIPTION],
-                        '#u': [utxo],
+                        '#i': [inscription.inscriptionId],
                     },
                 ])
             )
