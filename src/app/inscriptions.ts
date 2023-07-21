@@ -146,6 +146,7 @@ const Inscriptions = function (config) {
                 ...inscriptionData,
                 inscriptionId,
                 vout,
+                txid,
                 value: inscriptionData.sats,
                 owner,
             };
