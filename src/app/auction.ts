@@ -81,8 +81,14 @@ const Auction = function (config: Config) {
         },
 
         listAuctionInscriptions: async () => {
-            const auctions = await auctionService.list();
-            return auctions;
+            try {
+                const auctions = await auctionService.list();
+                return auctions;
+            } catch (e) {
+                console.error(e);
+            }
+
+            return [];
         },
 
         createAuction: async (auction: AuctionInput) => {
