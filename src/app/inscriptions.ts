@@ -115,8 +115,8 @@ const Inscriptions = function (config) {
                 owner,
             } = outpointResult;
 
-            const [txid, vout] = cryptoModule.parseOutpoint(outpoint);
-
+            const [txid, _vout] = cryptoModule.parseOutpoint(outpoint);
+            const vout = Number(_vout);
             return { txid, vout, owner };
         },
 
