@@ -106,7 +106,8 @@ const Inscriptions = function (config) {
 
         getTxidVout: async (inscriptionData) => {
             if (inscriptionData.output) {
-                const [txid, vout] = inscriptionData.output.split(':');
+                const [txid, _vout] = inscriptionData.output.split(':');
+                const vout = Number(_vout);
                 return { txid, vout, owner: inscriptionData.owner };
             }
             const outpointResult = await inscriptionsModule.getOutpointFromCache(inscriptionData.id);
