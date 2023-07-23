@@ -77,7 +77,7 @@ const Nostr = function (config: Config) {
 
             // group orders by id into multiple arrays
             const groupedOrders = nostrOrders.reduce((acc, order) => {
-                const inscriptionId = order.id;
+                const inscriptionId = order.tags.find((x) => x?.[0] === 'i')[1];
                 if (!acc[inscriptionId]) {
                     acc[inscriptionId] = [];
                 }
