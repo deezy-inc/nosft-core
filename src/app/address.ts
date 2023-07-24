@@ -9,10 +9,13 @@ import SessionStorage, { SessionsStorageKeys } from '../services/session-storage
 
 bitcoin.initEccLib(ecc);
 
+type BasicPayment = bitcoin.Payment;
+export type XversePayment = { output: Buffer; tapInternalKey: Buffer; pubkey: Buffer };
+
 const Address = function (config: Config) {
     const cryptoModule = Crypto(config);
     const addressModule = {
-        getAddressInfo: async (pubkey) => {
+        getAddressInfo: async <T extends BasicPayment | XversePayment = BasicPayment>(pubkey: string): Promise<T> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const pubkeyBuffer = Buffer.from(pubkey, 'hex');
 
@@ -23,17 +26,15 @@ const Address = function (config: Config) {
                     network: config.NETWORK,
                 });
 
-                return addrInfo;
+                return addrInfo as T;
             } else if (provider === 'xverse') {
                 const module = await signerModule;
                 const p2trAddress = module.p2tr(pubkey, undefined, config.NETWORK);
-                const result = {
-                    ...p2trAddress,
+                return {
                     tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
                     output: hex.encode(p2trAddress.script),
                     pubkey: Buffer.from(pubkey, 'hex'),
-                };
-                return result;
+                } as unknown as T;
             }
 
             const addrInfo = bitcoin.payments.p2tr({
@@ -41,7 +42,7 @@ const Address = function (config: Config) {
                 network: config.NETWORK,
             });
 
-            return addrInfo;
+            return addrInfo as T;
         },
         getPaymentAddressInfo: async (pubkey: string) => {
             const wpkh = bitcoin.payments.p2wpkh({

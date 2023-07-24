@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax, no-await-in-loop, no-continue, react/forbid-prop-types, radix, no-empty, guard-for-in */
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
-import { Address } from './address';
+import { Address, XversePayment } from './address';
 import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import { Psbt } from './psbt';
@@ -268,10 +268,7 @@ const OpenOrdex = function (config: Config) {
 
         generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-            let inputAddressInfo;
-            if (provider === 'xverse') {
-                inputAddressInfo = await addressModule.getAddressInfo(pubkey);
-            }
+            const isXverse = provider === 'xverse';
 
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             const ordinalUtxoTxId = utxo.txid;
@@ -293,8 +290,8 @@ const OpenOrdex = function (config: Config) {
                 // eslint-disable-next-line no-bitwise
                 sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
                 sequence: 0xfffffffd,
-                ...(inputAddressInfo
-                    ? { tapInternalKey: inputAddressInfo.tapInternalKey }
+                ...(isXverse
+                    ? { tapInternalKey: (await addressModule.getAddressInfo<XversePayment>(pubkey)).tapInternalKey }
                     : { nonWitnessUtxo: tx.toBuffer() }),
             };
 
@@ -482,6 +479,7 @@ const OpenOrdex = function (config: Config) {
                 }
 
                 if (provider === 'unisat.io') {
+                    if (ordinalsPublicKey === null) throw new Error(`Invalid  Public Key`);
                     const inputAddressInfo = await addressModule.getAddressInfo(ordinalsPublicKey);
                     const inputParams = await psbtModule.getInputParams({
                         utxo,
