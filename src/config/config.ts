@@ -1,4 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
+bitcoin.initEccLib(ecc);
 
 import {
     TESTNET,

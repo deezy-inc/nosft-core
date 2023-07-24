@@ -6,7 +6,6 @@ import { hex } from '@scure/base';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
-import { NETWORK } from '../config/constants';
 
 bitcoin.initEccLib(ecc);
 
@@ -21,13 +20,13 @@ const Address = function (config: Config) {
             if (provider === 'unisat.io') {
                 const addrInfo = bitcoin.payments.p2tr({
                     internalPubkey: cryptoModule.toXOnly(pubkeyBuffer),
-                    network: NETWORK,
+                    network: config.NETWORK,
                 });
 
                 return addrInfo;
             } else if (provider === 'xverse') {
                 const module = await signerModule;
-                const p2trAddress = module.p2tr(pubkey, undefined, NETWORK);
+                const p2trAddress = module.p2tr(pubkey, undefined, config.NETWORK);
                 const result = {
                     ...p2trAddress,
                     tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
@@ -39,7 +38,7 @@ const Address = function (config: Config) {
 
             const addrInfo = bitcoin.payments.p2tr({
                 pubkey: pubkeyBuffer,
-                network: NETWORK,
+                network: config.NETWORK,
             });
 
             return addrInfo;
@@ -47,9 +46,9 @@ const Address = function (config: Config) {
         getPaymentAddressInfo: async (pubkey: string) => {
             const wpkh = bitcoin.payments.p2wpkh({
                 pubkey: Buffer.from(pubkey, 'hex'),
-                network: NETWORK,
+                network: config.NETWORK,
             });
-            const redeemScript = bitcoin.payments.p2sh({ redeem: wpkh, network: NETWORK }).redeem?.output;
+            const redeemScript = bitcoin.payments.p2sh({ redeem: wpkh, network: config.NETWORK }).redeem?.output;
             return {
                 script: wpkh.output,
                 redeemScript,

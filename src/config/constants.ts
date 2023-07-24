@@ -1,4 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
+bitcoin.initEccLib(ecc);
 
 export const TESTNET = false;
 export const METAMASK_PROVIDERS = ['nosft.xyz', 'ordswap.io', 'generative.xyz'];

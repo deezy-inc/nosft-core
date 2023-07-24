@@ -1,12 +1,13 @@
 import * as bitcoin from 'bitcoinjs-lib';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
-import { AddressPurposes, BitcoinNetwork, GetAddressOptions, getAddress } from 'sats-connect';
+import { AddressPurposes, GetAddressOptions, getAddress } from 'sats-connect';
 import { ethers } from 'ethers';
 import { BIP32Factory } from 'bip32';
 import { Crypto } from './crypto';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
-import { METAMASK_PROVIDERS, NETWORK, NETWORK_NAME } from '../config/constants';
+import { METAMASK_PROVIDERS } from '../config/constants';
+import { Config } from '../config/config';
 
 bitcoin.initEccLib(ecc);
 const bip32 = BIP32Factory(ecc);
@@ -22,7 +23,7 @@ type WalletKeys = {
     paymentAddress: string;
 };
 
-const Wallet = function (config) {
+const Wallet = function (config: Config) {
     const cryptoModule = Crypto(config);
     const walletModule = {
         getUnisatPubKey: async () => {
@@ -46,7 +47,7 @@ const Wallet = function (config) {
             const taprootChild = root.derivePath(config.DEFAULT_DERIV_PATH);
             const taprootAddress = bitcoin.payments.p2tr({
                 internalPubkey: cryptoModule.toXOnly(taprootChild.publicKey),
-                network: NETWORK,
+                network: config.NETWORK,
             });
             return taprootAddress?.pubkey?.toString('hex');
         },
@@ -72,8 +73,8 @@ const Wallet = function (config) {
                     purposes: ['ordinals', 'payment'] as AddressPurposes[],
                     message: 'Address for receiving Ordinals',
                     network: {
-                        type: NETWORK_NAME,
-                    } as BitcoinNetwork,
+                        type: config.TESTNET ? 'Testnet' : 'Mainnet',
+                    },
                 },
             };
 

@@ -5,10 +5,10 @@ import { Crypto } from './crypto';
 import { Utxo } from './utxo';
 import { Psbt } from './psbt';
 import * as bitcoin from 'bitcoinjs-lib';
-import { NETWORK } from '../config/constants';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 import { ECPairFactory } from 'ecpair';
+import { Config } from '../config/config';
 
 bitcoin.initEccLib(ecc);
 
@@ -20,7 +20,7 @@ const ecdsaValidator = (pubkey, msghash, signature) => {
     return ECPairFactory(ecc).fromPublicKey(pubkey).verify(msghash, signature);
 };
 
-const OpenOrdex = function (config) {
+const OpenOrdex = function (config: Config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
     const addressModule = Address(config);
@@ -441,7 +441,7 @@ const OpenOrdex = function (config) {
 
             // For some reason, when adding the input to psbt it doesn't work, it throws an error
             // but cloning the same psbt to another one works fine
-            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: NETWORK });
+            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: config.NETWORK });
 
             // for (const dummyUtxo of psbt.data.inputs) {
             //     if (dummyUtxo.witnessUtxo) {

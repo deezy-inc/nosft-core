@@ -77,11 +77,14 @@ const Nostr = function (config: Config) {
 
             // group orders by id into multiple arrays
             const groupedOrders = nostrOrders.reduce((acc, order) => {
-                const inscriptionId = order.tags.find((x) => x?.[0] === 'i')[1];
-                if (!acc[inscriptionId]) {
-                    acc[inscriptionId] = [];
+                const inscriptionTag = order.tags.find((x) => x?.[0] === 'i');
+                if (inscriptionTag) {
+                    const inscriptionId = inscriptionTag[1];
+                    if (!acc[inscriptionId]) {
+                        acc[inscriptionId] = [];
+                    }
+                    acc[inscriptionId].push(order);
                 }
-                acc[inscriptionId].push(order);
                 return acc;
             }, {});
 

@@ -12,8 +12,9 @@ import SessionStorage, { SessionsStorageKeys } from '../services/session-storage
 import axios from 'axios';
 import { Crypto } from './crypto';
 import { Address } from './address';
-import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
+import { BOOST_UTXO_VALUE } from '../config/constants';
 import { isMetamaskProvider } from './wallet';
+import { Config } from '../config/config';
 
 bitcoin.initEccLib(ecc);
 
@@ -25,30 +26,26 @@ function isHexadecimal(str) {
     return str.length % 2 === 0 && hexRegex.test(str);
 }
 
-const getPsbt = (psbtContent) => {
-    const psbt = isHexadecimal(psbtContent)
-        ? bitcoin.Psbt.fromHex(psbtContent, {
-              network: NETWORK,
-          })
-        : bitcoin.Psbt.fromBase64(psbtContent, {
-              network: NETWORK,
-          });
-
-    return psbt;
-};
-
-const getPsbtBase64 = (psbtContent) => {
-    const buffer = Buffer.from(psbtContent, 'hex');
-    return buffer.toString('base64');
-};
-
-const Psbt = function (config) {
+const Psbt = function (config: Config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
 
     const psbtModule = {
-        getPsbt,
-        getPsbtBase64,
+        getPsbt: (psbtContent) => {
+            const psbt = isHexadecimal(psbtContent)
+                ? bitcoin.Psbt.fromHex(psbtContent, {
+                      network: config.NETWORK,
+                  })
+                : bitcoin.Psbt.fromBase64(psbtContent, {
+                      network: config.NETWORK,
+                  });
+
+            return psbt;
+        },
+        getPsbtBase64: (psbtContent) => {
+            const buffer = Buffer.from(psbtContent, 'hex');
+            return buffer.toString('base64');
+        },
         getMetamaskSigner: async (metamaskDomain) => {
             // @ts-ignore
             const { ethereum } = window;
@@ -158,8 +155,8 @@ const Psbt = function (config) {
                 onCancel: () => {},
                 payload: {
                     network: {
-                        type: NETWORK_NAME,
-                    } as BitcoinNetwork,
+                        type: config.TESTNET ? 'Testnet' : 'Mainnet',
+                    },
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
                     broadcast: false,
@@ -185,7 +182,7 @@ const Psbt = function (config) {
             });
 
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
-                network: NETWORK,
+                network: config.NETWORK,
             }).finalizeInput(0);
 
             return finalPsbt.toHex();
@@ -257,8 +254,8 @@ const Psbt = function (config) {
                 onCancel: () => {},
                 payload: {
                     network: {
-                        type: NETWORK_NAME,
-                    } as BitcoinNetwork,
+                        type: config.TESTNET ? 'Testnet' : 'Mainnet',
+                    },
                     message: 'Sign Transaction',
                     psbtBase64: basePsbt.toBase64(),
                     broadcast: false,
@@ -284,7 +281,7 @@ const Psbt = function (config) {
             });
 
             const psbt = bitcoin.Psbt.fromBase64(psbtBase64, {
-                network: NETWORK,
+                network: config.NETWORK,
             }).finalizeAllInputs();
 
             return psbtModule.broadcastPsbt(psbt);
@@ -376,7 +373,7 @@ const Psbt = function (config) {
                 onCancel: () => {},
                 payload: {
                     network: {
-                        type: NETWORK_NAME,
+                        type: config.TESTNET ? 'Testnet' : 'Mainnet',
                     } as BitcoinNetwork,
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
@@ -404,7 +401,7 @@ const Psbt = function (config) {
             });
 
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
-                network: NETWORK,
+                network: config.NETWORK,
             }).finalizeInput(0);
 
             return finalPsbt;
@@ -412,7 +409,7 @@ const Psbt = function (config) {
 
         signPsbtMessage: async (psbt, address, getPsbt = false, ignoreFinalizeDummies = false) => {
             const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
-                network: NETWORK,
+                network: config.NETWORK,
             });
             // if only 1 input, then this is a PSBT listing
             if (virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) {
@@ -428,7 +425,7 @@ const Psbt = function (config) {
                     const unisatSigned = await window.unisat.signPsbt(virtualToSign.toHex());
 
                     return bitcoin.Psbt.fromHex(unisatSigned, {
-                        network: NETWORK,
+                        network: config.NETWORK,
                     });
                 }
 
@@ -510,7 +507,7 @@ const Psbt = function (config) {
             const inputsToSign: InputToSign[] = [];
             console.log('signBuyOrderWithXverse', psbt.toBase64());
             const currentPsbt = bitcoin.Psbt.fromBase64(psbt.toBase64(), {
-                network: NETWORK,
+                network: config.NETWORK,
             });
 
             for (const [i, input] of currentPsbt.data.inputs.entries()) {
@@ -527,7 +524,7 @@ const Psbt = function (config) {
                 onCancel: () => {},
                 payload: {
                     network: {
-                        type: NETWORK_NAME,
+                        type: config.TESTNET ? 'Testnet' : 'Mainnet',
                     } as BitcoinNetwork,
                     message: 'Sign Transaction',
                     psbtBase64: psbt.toBase64(),
@@ -552,7 +549,7 @@ const Psbt = function (config) {
             });
 
             const finalPsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64, {
-                network: NETWORK,
+                network: config.NETWORK,
             });
 
             for (const i in inputsToSign) {
