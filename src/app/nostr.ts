@@ -5,6 +5,16 @@ import axios from 'axios';
 import { OpenOrdex } from './openOrdex';
 import { Config } from '../config/config';
 import { Utxo } from './utxo';
+import * as bitcoin from 'bitcoinjs-lib';
+// @ts-ignore
+import * as ecc from 'tiny-secp256k1';
+
+bitcoin.initEccLib(ecc);
+
+interface TransactionOutput {
+    address: string;
+    value: number;
+}
 
 const Nostr = function (config: Config) {
     const ordexModule = OpenOrdex(config);
@@ -15,8 +25,9 @@ const Nostr = function (config: Config) {
             for (const order of orders) {
                 try {
                     const isUtxoSpent = await utxoModule.isSpent({ output: order.tags.find((x) => x?.[0] === 'u')[1] });
-                    if (isUtxoSpent.spent) continue;
-
+                    if (isUtxoSpent.spent) {
+                        continue;
+                    }
                     const orderInformation = await ordexModule.getOrderInformation(order);
                     // @ts-ignore
                     if (Number(orderInformation.value) === Number(order.tags.find((x) => x?.[0] === 's')[1])) {
@@ -59,12 +70,13 @@ const Nostr = function (config: Config) {
             }
             return undefined;
         },
-        getNostrInscriptions: async (inscriptionIds) => {
+        getNostrInscriptions: async (inscriptionIds, type = 'sell') => {
             const nostrOrders = (
                 await nostrPool.list([
                     {
                         kinds: [config.NOSTR_KIND_INSCRIPTION],
                         '#i': inscriptionIds,
+                        '#t': [type],
                     },
                 ])
             )
@@ -92,23 +104,112 @@ const Nostr = function (config: Config) {
             }
             return result;
         },
-        getLatestNostrInscription: async (inscription) => {
-            const orders = (
-                await nostrPool.list([
-                    {
-                        kinds: [config.NOSTR_KIND_INSCRIPTION],
-                        '#i': [inscription.inscriptionId],
-                    },
-                ])
-            )
+        getLatestSellNostrInscription: async ({ inscriptionId }) => {
+            const orders = await nostrPool.list([
+                {
+                    kinds: [config.NOSTR_KIND_INSCRIPTION],
+                    '#i': [inscriptionId],
+                    '#t': ['sell'],
+                },
+            ]);
+            const filteredOrders = orders
                 .filter((a) => a.tags.find((x) => x?.[0] === 's')?.[1])
                 .sort(
                     (b, a) =>
                         // @ts-ignore
                         Number(a.created_at) - Number(b.created_at)
                 );
+            const validOrders = await nostrModule.filterOrders(filteredOrders);
+            return validOrders;
+        },
 
-            return nostrModule.filterOrders(orders);
+        getNostrBid: async ({ inscriptionId, output }) => {
+            const orders = (
+                await nostrPool.list([
+                    {
+                        kinds: [config.NOSTR_KIND_INSCRIPTION],
+                        '#i': [inscriptionId],
+                        '#t': ['buy'],
+                        '#x': ['deezy'],
+                        '#u': [output],
+                    },
+                ])
+            )
+                .sort((a, b) => {
+                    const priceB = Number(b.tags.find((x) => x?.[0] === 's')[1]);
+                    const priceA = Number(a.tags.find((x) => x?.[0] === 's')[1]);
+                    if (priceB === priceA) {
+                        return Number(b.created_at) - Number(a.created_at);
+                    } else {
+                        return priceB - priceA;
+                    }
+                })
+                .reduce(
+                    (acc, order) => {
+                        // validate psbt
+                        try {
+                            const network = config.NETWORK;
+                            const psbt = bitcoin.Psbt.fromBase64(order.content, {
+                                network,
+                            });
+
+                            const outputs: TransactionOutput[] = [];
+
+                            for (const output of psbt.txOutputs.reverse()) {
+                                const address: string = bitcoin.address.fromOutputScript(output.script, network);
+                                const value: number = output.value;
+
+                                outputs.push({
+                                    address,
+                                    value,
+                                });
+                            }
+
+                            // just find the bid owner
+                            // Address appears exactly twice and uses the 10000 at least once.
+                            const targetValue: number = 10000;
+                            let bidOwner = '';
+
+                            const addressCountMap: Map<string, number> = new Map();
+
+                            outputs.forEach((item: TransactionOutput) => {
+                                if (addressCountMap.has(item.address)) {
+                                    addressCountMap.set(item.address, addressCountMap.get(item.address)! + 1);
+                                } else {
+                                    addressCountMap.set(item.address, 1);
+                                }
+                            });
+
+                            addressCountMap.forEach((value: number, key: string) => {
+                                if (value === 2) {
+                                    const usesTargetValue: boolean = outputs.some(
+                                        (item: TransactionOutput) => item.address === key && item.value === targetValue
+                                    );
+                                    if (usesTargetValue) {
+                                        bidOwner = key;
+                                    }
+                                }
+                            });
+
+                            return [
+                                ...acc,
+                                {
+                                    price: Number(order.tags.find((x) => x?.[0] === 's')[1]),
+                                    bidOwner,
+                                    nostr: order,
+                                    output,
+                                    created_at: Number(order.created_at),
+                                },
+                            ];
+                        } catch (e) {
+                            return acc;
+                        }
+                    },
+
+                    []
+                );
+
+            return orders;
         },
 
         getNostrInscriptionByEventId: async (eventId) => {
@@ -209,12 +310,13 @@ const Nostr = function (config: Config) {
         },
 
         // Dutch auction API abstracts the process of signing it and publishing it to nostr
-        publishOrder: async ({ utxo, ordinalValue, signedPsbt }) => {
+        publishOrder: async ({ utxo, ordinalValue, signedPsbt, type = 'sell' }) => {
             const data = await axios.post(`${config.AUCTION_URL}/nostr`, {
                 psbt: signedPsbt,
                 output: utxo.output,
                 inscriptionId: utxo.inscriptionId,
                 currentPrice: ordinalValue,
+                type,
             });
 
             return data.data;
