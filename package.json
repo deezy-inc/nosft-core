@@ -1,6 +1,6 @@
 {
     "name": "nosft-core",
-    "version": "2.3.54",
+    "version": "2.3.61",
     "engines": {
         "node": ">=18.0.0"
     },
