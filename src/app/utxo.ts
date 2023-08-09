@@ -23,6 +23,10 @@ const Utxo = function (config) {
             const outputs = []; // This tracks all outputs that have been seen on the address.
             const spentOutpoints = new Set(); // This tracks all outputs that have been spent from this address.
             let lastSeenTxId = null;
+            let lastSeenTxStatus = false;
+            let apiEndpoint = '';
+
+            // Fetch unconfirmed txs first
 
             // We do one pass through to find all outputs and spent outputs.
             while (true) {
@@ -30,9 +34,13 @@ const Utxo = function (config) {
                 // eslint-disable-next-line no-await-in-loop
                 await utxoModule.delay(100);
 
-                const url = `${config.MEMPOOL_API_URL}/api/address/${address}/txs${
-                    lastSeenTxId ? `/chain/${lastSeenTxId}` : ''
-                }`;
+                // /txs/chain can only paginate by confirmed transactions
+                if (lastSeenTxId != null) {
+                    // if the last tx we are trying to paginate with is unconfirmed, we call /txs/chain to get first 50 confirmed txs
+                    apiEndpoint = !lastSeenTxStatus ? '/chain' : `/chain/${lastSeenTxId}`;
+                }
+
+                const url = `${config.MEMPOOL_API_URL}/api/address/${address}/txs${apiEndpoint}`;
                 // eslint-disable-next-line no-await-in-loop
                 const resp = await axios.get(url);
 
@@ -56,6 +64,7 @@ const Utxo = function (config) {
                     }
                 }
                 lastSeenTxId = txs[txs.length - 1].txid;
+                lastSeenTxStatus = txs[txs.length - 1].status.confirmed;
             }
 
             // Now we filter out all outputs that have been spent.
