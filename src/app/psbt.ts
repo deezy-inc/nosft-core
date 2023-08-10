@@ -223,6 +223,10 @@ const Psbt = function (config) {
             const fullTx = bitcoin.Transaction.fromHex(hex);
             // It is added in order to debug the transaction
             if (!skipBroadcastTx) {
+                // This console.log is just for testing purposes
+                // We can remove it later
+                // TODO: remove it
+                console.log('[Broadcasting tx]', hex);
                 await axios.post(`https://mempool.space/api/tx`, hex);
             }
             return fullTx.getId();
@@ -667,6 +671,10 @@ const Psbt = function (config) {
 
             if (provider === 'unisat.io') {
                 const signedTx = await window.unisat.signPsbt(virtualToSign.toHex());
+                // This console.log is just for testing purposes
+                // We can remove it later
+                // TODO: remove it
+                console.log('[Broadcasting tx]', signedTx);
                 return psbtModule.broadcastTx(signedTx);
             }
 
