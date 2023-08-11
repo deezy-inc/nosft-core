@@ -482,9 +482,12 @@ const OpenOrdex = function (config) {
 
             return psbt;
         },
+        // @price: seller price
         calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt, selectedFeeRate }) => {
             let totalPaymentValue = 0;
-            const totalDummyValue = psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
+            // Original utxo price
+            const utxoPrice = psbt.data.inputs.find((x) => x.finalScriptWitness)?.witnessUtxo?.value;
+            if (!utxoPrice) throw new Error('Invalid utxo price');
             for (const utxo of paymentUtxos) {
                 totalPaymentValue += utxo.value;
             }
@@ -494,8 +497,8 @@ const OpenOrdex = function (config) {
                 vouts: psbt.txOutputs.length,
                 recommendedFeeRate: selectedFeeRate,
             });
-            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
-            return { changeValue, totalPaymentValue, fee, totalDummyValue };
+            const changeValue = utxoPrice + totalPaymentValue - 10000 - price - fee; // 10000 is the default output value for the inscription
+            return { changeValue, totalPaymentValue, fee };
         },
         calculateRequiredFeeForBid: async ({ bidPrice, utxoPrice, paymentUtxos, psbt, selectedFeeRate }) => {
             let totalPaymentValue = 0;
@@ -578,7 +581,7 @@ const OpenOrdex = function (config) {
             }
 
             const { changeValue, totalPaymentValue, fee } = await ordexModule.calculateRequiredFeeForBuy({
-                price,
+                price, // seller price
                 paymentUtxos,
                 psbt,
                 selectedFeeRate,
