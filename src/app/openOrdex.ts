@@ -20,6 +20,25 @@ const ecdsaValidator = (pubkey, msghash, signature) => {
     return ECPairFactory(ecc).fromPublicKey(pubkey).verify(msghash, signature);
 };
 
+type SelectUtxos = {
+    utxos: any[];
+    amount: number;
+    vins: number;
+    vouts: number;
+    recommendedFeeRate: number;
+};
+
+type GenerateDeezyPSBTListingForBid = {
+    paymentAddress: string;
+    bidPrice: number;
+    utxoPrice: number;
+    paymentUtxos: any[];
+    psbt: any;
+    paymentPublicKey: string;
+    ordinalsPublicKey: string;
+    selectedFeeRate: number;
+};
+
 const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
@@ -146,19 +165,18 @@ const OpenOrdex = function (config) {
             };
         },
 
-        selectUtxos: async ({ utxos, dummyUtxos, amount, vins, vouts, recommendedFeeRate }) => {
+        selectUtxos: async ({ utxos, amount, vins, vouts, recommendedFeeRate }: SelectUtxos) => {
             const selectedUtxos = [];
             let selectedAmount = 0;
 
-            // Sort ascending by value, and filter out unconfirmed utxos
-            const spendableUtxos = utxos.filter((x) => x.status.confirmed).sort((a, b) => a.value - b.value);
+            // Sort descending by value, and filter out unconfirmed utxos greater than 10.000 sats
+            const spendableUtxos = utxos
+                .filter((x) => x.status.confirmed && x.value >= 10000)
+                .sort((a, b) => b.value - a.value); //
 
             for (const utxo of spendableUtxos) {
                 // Never spend a utxo that contains an inscription for cardinal purposes
                 if (await utxoModule.doesUtxoContainInscription(utxo)) {
-                    continue;
-                }
-                if (dummyUtxos.includes(utxo)) {
                     continue;
                 }
                 // @ts-ignore
@@ -224,7 +242,6 @@ const OpenOrdex = function (config) {
 
             const selectedUtxos = await ordexModule.selectUtxos({
                 utxos: payerUtxos,
-                dummyUtxos,
                 amount: minimumValueRequired,
                 vins,
                 vouts,
@@ -263,7 +280,6 @@ const OpenOrdex = function (config) {
 
             const selectedUtxos = await ordexModule.selectUtxos({
                 utxos: payerUtxos,
-                dummyUtxos,
                 amount: minimumValueRequired,
                 vins,
                 vouts,
@@ -271,6 +287,31 @@ const OpenOrdex = function (config) {
             });
 
             return { selectedUtxos, dummyUtxos };
+        },
+
+        getFundingUtxos: async ({ address, price, psbt, selectedFeeRate }) => {
+            const payerUtxos = await utxoModule.getAddressUtxos(address);
+            if (!payerUtxos.length) {
+                throw new Error(`No utxos found for address ${address}`);
+            }
+
+            // Just take the dummy utxos
+            // price amount + dummy amount
+            const minimumValueRequired = psbt.data.inputs
+                .filter((i) => !i.nonWitnessUtxo)
+                .reduce((acc, curr) => curr.witnessUtxo.value + acc, price);
+
+            if (typeof selectedFeeRate !== 'number' || selectedFeeRate <= 0) throw new Error('Invalid fee rate.');
+
+            const selectedUtxos = await ordexModule.selectUtxos({
+                utxos: payerUtxos,
+                amount: minimumValueRequired,
+                vins: psbt.data.inputs.length,
+                vouts: psbt.data.outputs.length,
+                recommendedFeeRate: selectedFeeRate,
+            });
+
+            return { selectedUtxos };
         },
 
         generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
@@ -309,6 +350,39 @@ const OpenOrdex = function (config) {
 
             psbt.addOutput({
                 address: paymentAddress,
+                value: price,
+            });
+
+            return psbt;
+        },
+
+        generateBidPSBT: async ({ utxo, ownerAddresss, price }) => {
+            const psbt = new bitcoin.Psbt({ network: config.NETWORK });
+            const ordinalUtxoTxId = utxo.txid;
+            const ordinalUtxoVout = utxo.vout;
+
+            const tx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(ordinalUtxoTxId));
+
+            for (const output in tx.outs) {
+                try {
+                    tx.setWitness(parseInt(output), []);
+                } catch {}
+            }
+
+            const input = {
+                hash: ordinalUtxoTxId,
+                index: parseInt(ordinalUtxoVout, 10),
+                witnessUtxo: tx.outs[ordinalUtxoVout],
+                // Maybe we should add it
+                // eslint-disable-next-line no-bitwise
+                sequence: 0xfffffffd,
+                nonWitnessUtxo: tx.toBuffer(),
+            };
+
+            psbt.addInput(input);
+
+            psbt.addOutput({
+                address: ownerAddresss,
                 value: price,
             });
 
@@ -422,15 +496,27 @@ const OpenOrdex = function (config) {
                 totalPaymentValue += utxo.value;
             }
 
-            const feeRate = selectedFeeRate || (await cryptoModule.fetchRecommendedFee());
             const fee = cryptoModule.calculateFee({
                 vins: psbt.txInputs.length + paymentUtxos.length,
                 vouts: psbt.txOutputs.length,
-                recommendedFeeRate: feeRate,
+                recommendedFeeRate: selectedFeeRate,
             });
-
             const changeValue = totalPaymentValue - totalDummyValue - price - fee;
             return { changeValue, totalPaymentValue, fee, totalDummyValue };
+        },
+        calculateRequiredFeeForBid: async ({ bidPrice, utxoPrice, paymentUtxos, psbt, selectedFeeRate }) => {
+            let totalPaymentValue = 0;
+            for (const utxo of paymentUtxos) {
+                totalPaymentValue += utxo.value;
+            }
+
+            const fee = cryptoModule.calculateFee({
+                vins: psbt.txInputs.length + paymentUtxos.length,
+                vouts: psbt.txOutputs.length,
+                recommendedFeeRate: selectedFeeRate,
+            });
+            const changeValue = utxoPrice + totalPaymentValue - bidPrice - fee - 10000; // 10000: fixed output value for bid
+            return { changeValue, totalPaymentValue, fee };
         },
         generateDeezyPSBTListingForBuy: async (params) => {
             const {
@@ -438,7 +524,6 @@ const OpenOrdex = function (config) {
                 price,
                 paymentUtxos,
                 psbt: _psbt,
-                id,
                 paymentPublicKey,
                 ordinalsPublicKey = null,
                 selectedFeeRate = null,
@@ -510,11 +595,11 @@ const OpenOrdex = function (config) {
 
             if (changeValue < 0) {
                 const msg = `Your wallet address doesn't have enough funds to buy this inscription.
-                Price:      ${cryptoModule.satToBtc(price)} BTC
-                Fees:       ${cryptoModule.satToBtc(fee)} BTC
-                You have:   ${cryptoModule.satToBtc(totalPaymentValue)} BTC
-                Required:   ${cryptoModule.satToBtc(price + fee)} BTC
-                Missing:    ${cryptoModule.satToBtc(-changeValue)} BTC`;
+              Price:      ${cryptoModule.satToBtc(price)} BTC
+              Fees:       ${cryptoModule.satToBtc(fee)} BTC
+              You have:   ${cryptoModule.satToBtc(totalPaymentValue)} BTC
+              Required:   ${cryptoModule.satToBtc(price + fee)} BTC
+              Missing:    ${cryptoModule.satToBtc(-changeValue)} BTC`;
                 throw new Error(msg);
             }
 
@@ -523,7 +608,91 @@ const OpenOrdex = function (config) {
                 value: changeValue,
             });
 
-            return { psbt: psbtx, id };
+            return { psbt: psbtx };
+        },
+        generateDeezyPSBTListingForBid: async ({
+            paymentAddress,
+            bidPrice,
+            utxoPrice,
+            paymentUtxos,
+            psbt,
+            paymentPublicKey,
+            ordinalsPublicKey,
+            selectedFeeRate,
+        }: GenerateDeezyPSBTListingForBid) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            const isXverse = provider === 'xverse';
+            const paymentAddressInfo = isXverse ? await addressModule.getPaymentAddressInfo(paymentPublicKey) : null;
+
+            const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: NETWORK });
+
+            // Add payment utxo inputs
+            for (const utxo of paymentUtxos) {
+                if (provider !== 'unisat.io') {
+                    const utxoTx = bitcoin.Transaction.fromHex(await cryptoModule.getTxHexById(utxo.txid));
+                    for (const output in utxoTx.outs) {
+                        try {
+                            utxoTx.setWitness(parseInt(output), []);
+                        } catch {}
+                    }
+
+                    const { redeemScript, script } = paymentAddressInfo || {};
+
+                    const inputData = {
+                        hash: utxo.txid,
+                        index: utxo.vout,
+                        ...(!isXverse ? { nonWitnessUtxo: utxoTx.toBuffer() } : {}),
+                        ...(redeemScript && script
+                            ? {
+                                  redeemScript,
+                                  witnessUtxo: {
+                                      script: script,
+                                      value: Number(utxo.value),
+                                  },
+                              }
+                            : {}),
+                        sequence: 0xfffffffd,
+                        sighashType: bitcoin.Transaction.SIGHASH_ALL,
+                    };
+
+                    psbtx.addInput(inputData);
+                }
+
+                if (provider === 'unisat.io') {
+                    const inputAddressInfo = await addressModule.getAddressInfo(ordinalsPublicKey);
+                    const inputParams = await psbtModule.getInputParams({
+                        utxo,
+                        inputAddressInfo,
+                        sighashType: bitcoin.Transaction.SIGHASH_ALL,
+                    });
+                    psbtx.addInput(inputParams);
+                }
+            }
+
+            const { changeValue, totalPaymentValue, fee } = await ordexModule.calculateRequiredFeeForBid({
+                bidPrice,
+                utxoPrice,
+                paymentUtxos,
+                psbt,
+                selectedFeeRate,
+            });
+
+            if (changeValue < 0) {
+                const msg = `Your wallet address doesn't have enough funds to buy this inscription.
+              Price:      ${cryptoModule.satToBtc(bidPrice)} BTC
+              Fees:       ${cryptoModule.satToBtc(fee)} BTC
+              You have:   ${cryptoModule.satToBtc(totalPaymentValue)} BTC
+              Required:   ${cryptoModule.satToBtc(bidPrice + fee)} BTC
+              Missing:    ${cryptoModule.satToBtc(-changeValue)} BTC`;
+                throw new Error(msg);
+            }
+
+            psbtx.addOutput({
+                address: paymentAddress,
+                value: changeValue,
+            });
+
+            return { psbt: psbtx };
         },
     };
 

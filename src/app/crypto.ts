@@ -8,6 +8,13 @@ bitcoin.initEccLib(ecc);
 
 const ECPair = ECPairFactory(ecc);
 
+type CalculateFee = {
+    vins: number;
+    vouts: number;
+    recommendedFeeRate: number;
+    includeChangeOutput?: number;
+};
+
 const Crypto = function (config) {
     const cryptoModule = {
         outputValue: (currentUtxo, sendFeeRate, price?) =>
@@ -17,20 +24,24 @@ const Crypto = function (config) {
         // P2TR (Pay-to-Taproot):
         // Input size: ~57.5 vB (single key spend), variable for more complex scripts using Tapscript
         // Output size: ~43 vB
-        calculateFee: ({ vins, vouts, recommendedFeeRate, includeChangeOutput = 1 }) => {
+
+        calculateFee: ({ vins, vouts, recommendedFeeRate, includeChangeOutput = 1 }: CalculateFee) => {
+            if (typeof recommendedFeeRate !== 'number' || recommendedFeeRate <= 0) throw new Error('Invalid fee rate.');
+
             const baseTxSize = 10;
             const inSize = 57.5;
             const outSize = 43;
 
             const txSize = baseTxSize + vins * inSize + vouts * outSize + includeChangeOutput * outSize;
-            const fee = txSize * recommendedFeeRate;
 
-            return Math.round(fee);
+            const fee = Math.round(txSize * recommendedFeeRate);
+
+            return fee;
         },
 
-        shortenStr: (str) => {
+        shortenStr: (str, size = 8) => {
             if (!str) return '';
-            return `${str.substring(0, 8)}...${str.substring(str.length - 8, str.length)}`;
+            return `${str.substring(0, size)}...${str.substring(str.length - size, str.length)}`;
         },
 
         toXOnly: (key) => (key.length === 33 ? key.slice(1, 33) : key),
@@ -102,7 +113,7 @@ const Crypto = function (config) {
             const tweakedPrivateKey = ecc__namespace.privateAdd(
                 privateKey,
                 // @ts-ignore
-                tapTweakHash(toXOnly(signer.publicKey), bitcoin.networks.bitcoin.tweakHash)
+                cryptoModule.tapTweakHash(cryptoModule.toXOnly(signer.publicKey), bitcoin.networks.bitcoin.tweakHash)
             );
             if (!tweakedPrivateKey) {
                 throw new Error('Invalid tweaked private key!');
