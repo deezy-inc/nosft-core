@@ -20,7 +20,7 @@ const ecdsaValidator = (pubkey, msghash, signature) => {
     return ECPairFactory(ecc).fromPublicKey(pubkey).verify(msghash, signature);
 };
 
-type SelectUtxos = {
+type SelectSpendableUtxos = {
     utxos: any[];
     amount: number;
     vins: number;
@@ -165,7 +165,7 @@ const OpenOrdex = function (config) {
             };
         },
 
-        selectUtxos: async ({ utxos, amount, vins, vouts, recommendedFeeRate }: SelectUtxos) => {
+        selectUtxos: async ({ utxos, amount, vins, vouts, recommendedFeeRate }: SelectSpendableUtxos) => {
             const selectedUtxos = [];
             let selectedAmount = 0;
 
@@ -202,105 +202,85 @@ const OpenOrdex = function (config) {
             return selectedUtxos;
         },
 
-        getAvailableUtxosWithoutInscription: async ({ address, price }) => {
-            const payerUtxos = await utxoModule.getAddressUtxos(address);
-            if (!payerUtxos.length) {
-                throw new Error(`No utxos found for address ${address}`);
-            }
+        selectSpendableUtxos: async ({ utxos, amount, vins, vouts, recommendedFeeRate }: SelectSpendableUtxos) => {
+            const selectedUtxos = [];
+            let calculatedFee = 0;
+            let paymentAmount = 0;
 
-            // We require at least 2 dummy utxos for taker
-            const dummyUtxos = [];
-            // Sort ascending by value, and filter out unconfirmed utxos
-            const potentialDummyUtxos = payerUtxos.filter((x) => x.status.confirmed).sort((a, b) => a.value - b.value);
-            for (const potentialDummyUtxo of potentialDummyUtxos) {
-                if (!(await utxoModule.doesUtxoContainInscription(potentialDummyUtxo))) {
-                    // Dummy utxo found
-                    // @ts-ignore
-                    dummyUtxos.push(potentialDummyUtxo);
-                    if (dummyUtxos.length === config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE) {
-                        break;
-                    }
+            // Sort descending by value, and filter out unconfirmed utxos greater than 10.000 sats
+            const spendableUtxos = utxos
+                .filter((x) => x.status.confirmed && x.value >= 10000)
+                .sort((a, b) => b.value - a.value); //
+
+            for (const utxo of spendableUtxos) {
+                // Never spend a utxo that contains an inscription for cardinal purposes
+                if (await utxoModule.doesUtxoContainInscription(utxo)) {
+                    continue;
+                }
+                // @ts-ignore
+                selectedUtxos.push(utxo);
+                paymentAmount += utxo.value;
+
+                const calculatedFee = cryptoModule.calculateFee({
+                    vins: vins + selectedUtxos.length,
+                    vouts,
+                    recommendedFeeRate,
+                });
+                // amount should be the value of the inscription + price of the offer
+                if (paymentAmount >= amount + calculatedFee - 10000) {
+                    break;
                 }
             }
 
-            let minimumValueRequired;
-            let vins;
-            let vouts;
+            const required = amount + calculatedFee - 10000;
 
-            if (dummyUtxos.length < 2) {
-                // showDummyUtxoElements();
-                minimumValueRequired = config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE * config.DUMMY_UTXO_VALUE;
-                vins = 0;
-                vouts = config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE;
-            } else {
-                minimumValueRequired = price + config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE * config.DUMMY_UTXO_VALUE;
-                vins = 1;
-                vouts = 2 + config.NUMBER_OF_DUMMY_UTXOS_TO_CREATE;
+            if (paymentAmount < required) {
+                throw new Error(`Not enough cardinal spendable funds.
+      Address has:  ${cryptoModule.satToBtc(paymentAmount)} BTC
+      Needed:          ${cryptoModule.satToBtc(required)} BTC`);
             }
 
-            const recommendedFeeRate = await cryptoModule.fetchRecommendedFee();
-
-            const selectedUtxos = await ordexModule.selectUtxos({
-                utxos: payerUtxos,
-                amount: minimumValueRequired,
-                vins,
-                vouts,
-                recommendedFeeRate,
-            });
-
-            return { selectedUtxos, dummyUtxos };
+            return selectedUtxos;
         },
 
-        getAvailableUtxosWithoutDummies: async ({ address, price, psbt, fee, selectedFeeRate }) => {
+        getFundingUtxosForBid: async ({ address, utxoPrice, bidPrice, psbt, selectedFeeRate }) => {
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
             }
-
-            // We require at least 2 dummy utxos for taker
-            const dummyUtxos = [psbt.data.inputs[0].witnessUtxo.value, psbt.data.inputs[1].witnessUtxo.value];
-
-            let minimumValueRequired;
-            let vins;
-            let vouts;
-
-            minimumValueRequired =
-                price + psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
-            vins = 1;
-            vouts = 2;
-
-            const feeRate = fee || selectedFeeRate || (await cryptoModule.fetchRecommendedFee());
-
-            const selectedUtxos = await ordexModule.selectUtxos({
-                utxos: payerUtxos,
-                amount: minimumValueRequired,
-                vins,
-                vouts,
-                recommendedFeeRate: feeRate,
-            });
-
-            return { selectedUtxos, dummyUtxos };
-        },
-
-        getFundingUtxos: async ({ address, price, psbt, selectedFeeRate }) => {
-            const payerUtxos = await utxoModule.getAddressUtxos(address);
-            if (!payerUtxos.length) {
-                throw new Error(`No utxos found for address ${address}`);
-            }
-
-            // Just take the dummy utxos
-            // price amount + dummy amount
-            const minimumValueRequired = psbt.data.inputs
-                .filter((i) => !i.nonWitnessUtxo)
-                .reduce((acc, curr) => curr.witnessUtxo.value + acc, price);
 
             if (typeof selectedFeeRate !== 'number' || selectedFeeRate <= 0) throw new Error('Invalid fee rate.');
 
-            const selectedUtxos = await ordexModule.selectUtxos({
+            const selectedUtxos = await ordexModule.selectSpendableUtxos({
                 utxos: payerUtxos,
-                amount: minimumValueRequired,
+                amount: bidPrice + utxoPrice,
                 vins: psbt.data.inputs.length,
                 vouts: psbt.data.outputs.length,
+                recommendedFeeRate: selectedFeeRate,
+            });
+
+            return { selectedUtxos };
+        },
+        getFundingUtxosForBuy: async ({ address, offerPrice, sellerPsbt, selectedFeeRate }) => {
+            const utxoPrice = sellerPsbt.data.inputs.find((x) => x.finalScriptWitness)?.witnessUtxo?.value;
+
+            if (!utxoPrice) {
+                // it should never happen
+                throw new Error('Nostr utxo price not found.');
+            }
+
+            const payerUtxos = await utxoModule.getAddressUtxos(address);
+            if (!payerUtxos.length) {
+                throw new Error(`No utxos found for address ${address}`);
+            }
+
+            if (typeof selectedFeeRate !== 'number' || selectedFeeRate <= 0) throw new Error('Invalid fee rate.');
+
+            const selectedUtxos = await ordexModule.selectSpendableUtxos({
+                utxos: payerUtxos,
+                amount: offerPrice + utxoPrice,
+                vins: 3, // We have 2 dummy utxos + seller utxo
+                vouts: 3, // 1 for the buyer inscription, 1 for the dummy utxos, 1 for the seller, change will be asumed by the function
                 recommendedFeeRate: selectedFeeRate,
             });
 
@@ -482,9 +462,12 @@ const OpenOrdex = function (config) {
 
             return psbt;
         },
+        // @price: seller price
         calculateRequiredFeeForBuy: async ({ price, paymentUtxos, psbt, selectedFeeRate }) => {
             let totalPaymentValue = 0;
-            const totalDummyValue = psbt.data.inputs[0].witnessUtxo.value + psbt.data.inputs[1].witnessUtxo.value;
+            // Original utxo price
+            const utxoPrice = psbt.data.inputs.find((x) => x.finalScriptWitness)?.witnessUtxo?.value;
+            if (!utxoPrice) throw new Error('Invalid utxo price');
             for (const utxo of paymentUtxos) {
                 totalPaymentValue += utxo.value;
             }
@@ -494,8 +477,8 @@ const OpenOrdex = function (config) {
                 vouts: psbt.txOutputs.length,
                 recommendedFeeRate: selectedFeeRate,
             });
-            const changeValue = totalPaymentValue - totalDummyValue - price - fee;
-            return { changeValue, totalPaymentValue, fee, totalDummyValue };
+            const changeValue = utxoPrice + totalPaymentValue - 10000 - price - fee; // 10000 is the default output value for the inscription
+            return { changeValue, totalPaymentValue, fee };
         },
         calculateRequiredFeeForBid: async ({ bidPrice, utxoPrice, paymentUtxos, psbt, selectedFeeRate }) => {
             let totalPaymentValue = 0;
@@ -578,7 +561,7 @@ const OpenOrdex = function (config) {
             }
 
             const { changeValue, totalPaymentValue, fee } = await ordexModule.calculateRequiredFeeForBuy({
-                price,
+                price, // seller price
                 paymentUtxos,
                 psbt,
                 selectedFeeRate,
