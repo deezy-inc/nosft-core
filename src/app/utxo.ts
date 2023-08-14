@@ -102,7 +102,9 @@ const Utxo = function (config) {
             return html.match(/class=thumbnails/) !== null;
         },
         isSpent: async (utxo) => {
-            const [txid, vout] = utxo.output.split(':');
+            const [xTxid, vout] = utxo.output.split(':');
+            // There are txid starting with $, which are not valid
+            const txid = xTxid.split('$').join('');
             const {
                 data: { spent, ...props },
             } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}/outspend/${vout}`);
