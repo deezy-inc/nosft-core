@@ -2,7 +2,9 @@ name: publish npm package
 
 on:
     push:
-        tags: [v*]
+        branches:
+            - main
+            - 'releases/**'
 
 jobs:
     publish-npm:
@@ -20,4 +22,3 @@ jobs:
             - uses: JS-DevTools/npm-publish@v1
               with:
                   token: ${{ secrets.NPM_TOKEN }}
-                  greater-version-only: true
