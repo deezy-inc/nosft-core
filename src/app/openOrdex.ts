@@ -251,7 +251,14 @@ const OpenOrdex = function (config) {
             return { selectedUtxos, dummyUtxos };
         },
 
-        getAvailableUtxosWithoutDummies: async ({ address, price, psbt, fee, selectedFeeRate }) => {
+        getAvailableUtxosWithoutDummies: async ({ address, price, psbt: _psbt, fee, selectedFeeRate }) => {
+            const psbt =
+                typeof _psbt === 'string'
+                    ? bitcoin.Psbt.fromHex(_psbt, {
+                          network: config.NETWORK,
+                      })
+                    : _psbt;
+
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -511,15 +518,17 @@ const OpenOrdex = function (config) {
             const changeValue = utxoPrice + totalPaymentValue - bidPrice - fee - 10000; // 10000: fixed output value for bid
             return { changeValue, totalPaymentValue, fee };
         },
-        generateDeezyPSBTListingForBuy: async ({
-            paymentAddress,
-            price,
-            paymentUtxos,
-            psbt,
-            paymentPublicKey,
-            ordinalsPublicKey = null,
-            selectedFeeRate = null,
-        }) => {
+        generateDeezyPSBTListingForBuy: async (params) => {
+            const {
+                paymentAddress,
+                price,
+                paymentUtxos,
+                psbt: _psbt,
+                paymentPublicKey,
+                ordinalsPublicKey = null,
+                selectedFeeRate = null,
+            } = params;
+            const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: config.NETWORK }) : _psbt;
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
             const paymentAddressInfo = isXverse ? await addressModule.getPaymentAddressInfo(paymentPublicKey) : null;
