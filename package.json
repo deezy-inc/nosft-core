@@ -1,10 +1,6 @@
 {
     "name": "nosft-core",
-<<<<<<< HEAD
     "version": "2.3.67",
-=======
-    "version": "2.3.66",
->>>>>>> origin/main
     "engines": {
         "node": ">=18.0.0"
     },
