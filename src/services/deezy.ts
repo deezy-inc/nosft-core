@@ -88,6 +88,13 @@ class Deezy extends ApiService {
 
         return bolt11_invoice;
     }
+
+    public async populateDummysPsbt(psbt: string, receiveAddress: string): Promise<any> {
+        return this.post(`/v1/ordinals/psbt/populate`, {
+            psbt,
+            ordinal_receive_address: receiveAddress,
+        });
+    }
 }
 
 export function get(config?: DeezyConfig): Deezy {
