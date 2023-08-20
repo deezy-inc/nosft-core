@@ -243,7 +243,13 @@ const OpenOrdex = function (config) {
             return selectedUtxos;
         },
 
-        getFundingUtxosForBid: async ({ address, utxoPrice, bidPrice, psbt, selectedFeeRate }) => {
+        getFundingUtxosForBid: async ({ address, utxoPrice, bidPrice, psbt: _psbt, selectedFeeRate }) => {
+          const psbt =
+          typeof _psbt === 'string'
+              ? bitcoin.Psbt.fromHex(_psbt, {
+                    network: config.NETWORK,
+                })
+              : _psbt;
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
