@@ -7,7 +7,7 @@ import { hex } from '@scure/base';
 import * as ecc from 'tiny-secp256k1';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
 import { NETWORK } from '../config/constants';
-
+import { validate, Network as _ADDRESS_NETWORK } from 'bitcoin-address-validation';
 bitcoin.initEccLib(ecc);
 
 const Address = function (config: Config) {
@@ -54,6 +54,9 @@ const Address = function (config: Config) {
                 script: wpkh.output,
                 redeemScript,
             };
+        },
+        validateAddress: async (address: string) => {
+            return validate(address, config.TESTNET ? _ADDRESS_NETWORK.testnet : _ADDRESS_NETWORK.mainnet);
         },
     };
 
