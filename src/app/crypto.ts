@@ -15,10 +15,18 @@ type CalculateFee = {
     includeChangeOutput?: number;
 };
 
+export type PartialOutputValue = {
+    utxoValue: number;
+    sendFeeRate: number;
+    sendingAmount: number;
+};
+
 const Crypto = function (config) {
     const cryptoModule = {
         outputValue: (currentUtxo, sendFeeRate, price?) =>
-            price || currentUtxo.value - sendFeeRate * config.ASSUMED_TX_BYTES,
+            price >= 0 ? price : currentUtxo.value - sendFeeRate * config.ASSUMED_TX_BYTES,
+        partialOutputValue: ({ utxoValue, sendFeeRate, sendingAmount }: PartialOutputValue) =>
+            utxoValue - sendFeeRate * config.ASSUMED_TX_BYTES - sendingAmount,
 
         // Assume taproot for everything
         // P2TR (Pay-to-Taproot):

@@ -1,7 +1,8 @@
 import axios from 'axios';
 import LocalStorage, { LocalStorageKeys } from '../services/local-storage';
+import { Config } from '../config/config';
 
-const Utxo = function (config) {
+const Utxo = function (config: Config) {
     const utxoModule = {
         // TODO: Move me away
         delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -122,6 +123,10 @@ const Utxo = function (config) {
             // const confirmations = last_lock_height - props.status.block_height;
             // isSpent.confirmations = confirmations;
             // return isSpent;
+        },
+        getOutput: async (output) => {
+            const { data } = await axios.get(`${config.TURBO_API}/output/${output}`);
+            return data;
         },
     };
 
