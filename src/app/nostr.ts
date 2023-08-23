@@ -306,7 +306,14 @@ const Nostr = function (config: Config) {
         },
 
         // Dutch auction API abstracts the process of signing it and publishing it to nostr
-        publishOrder: async ({ utxo, ordinalValue, signedPsbt, type = 'sell' }) => {
+        publishOrder: async ({ utxo, ordinalValue, _signedPsbt, type = 'sell' }) => {
+            const signedPsbt =
+                typeof _signedPsbt === 'string'
+                    ? bitcoin.Psbt.fromHex(_signedPsbt, {
+                          network: config.NETWORK,
+                      })
+                    : _signedPsbt;
+
             const data = await axios.post(`${config.AUCTION_URL}/nostr`, {
                 psbt: signedPsbt,
                 output: utxo.output,
