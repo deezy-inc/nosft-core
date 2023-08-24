@@ -1,13 +1,4 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
-const path = require('path');
-const esbuild = require('esbuild');
-
-const { NodeGlobalsPolyfillPlugin } = require('@esbuild-plugins/node-globals-polyfill');
-const { NodeModulesPolyfillPlugin } = require('@esbuild-plugins/node-modules-polyfill');
-
-const wasmPlugin = {
+module.exports = {
     name: 'wasm',
     setup(build) {
         // Resolve ".wasm" files to a path with a namespace
@@ -58,55 +49,3 @@ const wasmPlugin = {
         }));
     },
 };
-
-let common = {
-    entryPoints: ['src/index.ts'],
-    bundle: true,
-    sourcemap: 'external',
-};
-
-esbuild
-    .build({
-        ...common,
-        outfile: 'lib/esm/nosft.mjs',
-        format: 'esm',
-        packages: 'external',
-    })
-    .then(() => {
-        const packageJson = JSON.stringify({ type: 'module' });
-        fs.writeFileSync(`${__dirname}/lib/esm/package.json`, packageJson, 'utf8');
-
-        console.log('esm build success.');
-    });
-
-esbuild
-    .build({
-        ...common,
-        outfile: 'lib/nosft.cjs.js',
-        format: 'cjs',
-        packages: 'external',
-    })
-    .then(() => console.log('cjs build success.'));
-
-esbuild
-    .build({
-        ...common,
-        outfile: 'lib/nosft.bundle.js',
-        format: 'iife',
-        globalName: 'NosftCore',
-        define: {
-            window: 'self',
-            global: 'globalThis',
-            process: "{'env': {}}",
-        },
-        target: 'esnext',
-        plugins: [
-            NodeGlobalsPolyfillPlugin({
-                process: true,
-                buffer: true,
-            }),
-            NodeModulesPolyfillPlugin(),
-            wasmPlugin,
-        ],
-    })
-    .then(() => console.log('standalone build success.'));
