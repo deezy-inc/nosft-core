@@ -1,19 +1,33 @@
 import { Config } from '../config/config';
 import { Crypto } from './crypto';
 import * as bitcoin from 'bitcoinjs-lib';
-const signerModule = import('@scure/btc-signer');
 import { hex } from '@scure/base';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
 import SessionStorage, { SessionsStorageKeys } from '../services/session-storage';
 import { NETWORK } from '../config/constants';
 import { validate, Network as _ADDRESS_NETWORK } from 'bitcoin-address-validation';
+// @ts-ignore
+import * as btc from '@scure/btc-signer';
+
 bitcoin.initEccLib(ecc);
 
 const Address = function (config: Config) {
     const cryptoModule = Crypto(config);
     const addressModule = {
-        getAddressInfo: async (pubkey) => {
+        // Taproot (P2TR)
+        getP2TRAddressInfo: (pubkey: string) => {
+            const p2trAddress = btc.p2tr(pubkey, undefined, NETWORK);
+            const result = {
+                ...p2trAddress,
+                tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
+                output: hex.encode(p2trAddress.script),
+                script: Buffer.from(p2trAddress.script),
+                pubkey: Buffer.from(pubkey, 'hex'),
+            };
+            return result;
+        },
+        getAddressInfo: (pubkey) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const pubkeyBuffer = Buffer.from(pubkey, 'hex');
 
@@ -25,16 +39,10 @@ const Address = function (config: Config) {
                 });
 
                 return addrInfo;
-            } else if (provider === 'xverse') {
-                const module = await signerModule;
-                const p2trAddress = module.p2tr(pubkey, undefined, NETWORK);
-                const result = {
-                    ...p2trAddress,
-                    tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),
-                    output: hex.encode(p2trAddress.script),
-                    pubkey: Buffer.from(pubkey, 'hex'),
-                };
-                return result;
+            }
+
+            if (provider === 'xverse') {
+                return addressModule.getP2TRAddressInfo(pubkey);
             }
 
             const addrInfo = bitcoin.payments.p2tr({
@@ -44,15 +52,13 @@ const Address = function (config: Config) {
 
             return addrInfo;
         },
-        getPaymentAddressInfo: async (pubkey: string) => {
-            const wpkh = bitcoin.payments.p2wpkh({
-                pubkey: Buffer.from(pubkey, 'hex'),
-                network: NETWORK,
-            });
-            const redeemScript = bitcoin.payments.p2sh({ redeem: wpkh, network: NETWORK }).redeem?.output;
+        // P2SH-P2WPHK
+        getWrappedSegwitAddressInfo: async (pubkey: string) => {
+            const p2wpkh = btc.p2wpkh(hex.decode(pubkey), config.NETWORK);
+            const p2sh = btc.p2sh(p2wpkh, config.NETWORK);
             return {
-                script: wpkh.output,
-                redeemScript,
+                script: Buffer.from(p2sh.script),
+                redeemScript: p2sh.redeemScript ? Buffer.from(p2sh.redeemScript) : Buffer.from([]),
             };
         },
         validateAddress: async (address: string) => {

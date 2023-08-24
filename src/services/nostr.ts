@@ -60,6 +60,7 @@ class NostrRelay {
 
         // loop over all pubs and wait for all to be done
         pubList.forEach((pub) => {
+            //@ts-ignore
             pub.on('ok', () => {
                 // Callback success only once
                 if (onSuccess && !notified) {
@@ -67,6 +68,7 @@ class NostrRelay {
                     onSuccess();
                 }
             });
+            //@ts-ignore
             pub.on('failed', (reason) => {
                 console.error(`failed to publish ${reason}`);
                 // Callback error only if all pubs failed

@@ -141,7 +141,7 @@ const Psbt = function (config) {
             return psbt;
         },
         createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
-            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -187,7 +187,6 @@ const Psbt = function (config) {
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeInput(0);
-
             return finalPsbt.toHex();
         },
 
@@ -244,7 +243,7 @@ const Psbt = function (config) {
         },
 
         signAndBroadcastUtxoByXverse: async ({ pubKey, address, utxo, destinationBtcAddress, sendFeeRate }) => {
-            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
             const basePsbt = await psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -301,7 +300,7 @@ const Psbt = function (config) {
                     sendFeeRate,
                 });
             }
-            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
 
             // @ts-ignore
             const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
@@ -332,7 +331,7 @@ const Psbt = function (config) {
         },
 
         createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, sighashType }) => {
-            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -576,6 +575,7 @@ const Psbt = function (config) {
                     });
                 }
             }
+
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -616,7 +616,7 @@ const Psbt = function (config) {
             return finalPsbt.toBase64();
         },
 
-        signPsbtListingForBuy: async ({ psbt, ordinalAddress }): Promise<string> => {
+        signPsbtListingForBuy: async ({ psbt, ordinalAddress, paymentAddress }): Promise<string> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let signedPsbt;
             if (provider === 'unisat.io') {
@@ -624,11 +624,10 @@ const Psbt = function (config) {
                 const buffer = Buffer.from(finalPopulatedPsbt, 'hex');
                 signedPsbt = buffer.toString('base64');
             } else if (provider === 'xverse') {
-                throw new Error('Xverse is not implemented yet.');
-                // signedPsbt = await psbtModule.signBuyOrderWithXverse({
-                //     psbt,
-                //     address: paymentAddress,
-                // });
+                signedPsbt = await psbtModule.signBuyOrderWithXverse({
+                    psbt,
+                    address: paymentAddress,
+                });
             } else {
                 const finalPopulatedPsbt = await psbtModule.signPsbtMessage(
                     psbt.toBase64(),

@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "target": "esnext",
-        "module": "esnext",
+        "module": "NodeNext",
         "outDir": "./lib",
         "declaration": true,
         "rootDir": "./src",
@@ -13,6 +13,7 @@
         "noUnusedParameters": true,
         "noImplicitAny": false,
         "moduleResolution": "nodenext",
+        "skipLibCheck": true,
         "allowSyntheticDefaultImports": true
     },
     "include": ["src/**/*.ts"],

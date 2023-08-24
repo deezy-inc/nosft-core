@@ -89,6 +89,7 @@ const Nostr = function (config: Config) {
 
             // group orders by id into multiple arrays
             const groupedOrders = nostrOrders.reduce((acc, order) => {
+                //@ts-ignore
                 const inscriptionId = order.tags.find((x) => x?.[0] === 'i')[1];
                 if (!acc[inscriptionId]) {
                     acc[inscriptionId] = [];
@@ -136,7 +137,9 @@ const Nostr = function (config: Config) {
                 ])
             )
                 .sort((a, b) => {
+                    //@ts-ignore
                     const priceB = Number(b.tags.find((x) => x?.[0] === 's')[1]);
+                    //@ts-ignore
                     const priceA = Number(a.tags.find((x) => x?.[0] === 's')[1]);
                     if (priceB === priceA) {
                         return Number(b.created_at) - Number(a.created_at);
@@ -144,6 +147,7 @@ const Nostr = function (config: Config) {
                         return priceB - priceA;
                     }
                 })
+                //@ts-ignore
                 .reduce((acc, order) => {
                     // validate psbt
                     try {
@@ -193,7 +197,8 @@ const Nostr = function (config: Config) {
                         return [
                             ...acc,
                             {
-                                price: Number(order.tags.find((x) => x?.[0] === 's')[1]),
+                                // @ts-ignore
+                                price: Number(order?.tags?.find((x) => x?.[0] === 's')[1]),
                                 bidOwner,
                                 nostr: order,
                                 output,
