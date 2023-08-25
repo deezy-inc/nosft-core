@@ -311,7 +311,8 @@ const OpenOrdex = function (config) {
             let input;
 
             if (provider === 'xverse') {
-                const inputAddressInfo = addressModule.getP2TRAddressInfo(pubkey);
+                console.log('[xverse],[generatePSBTListingInscriptionForSale]');
+                const inputAddressInfo = await addressModule.getP2TRAddressInfo(pubkey);
                 input = {
                     hash: ordinalUtxoTxId,
                     index: parseInt(ordinalUtxoVout, 10),
@@ -526,8 +527,15 @@ const OpenOrdex = function (config) {
             const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: config.NETWORK }) : _psbt;
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
+            console.log('[xverse][generateDeezyPSBTListingForBuy]', {
+                paymentPublicKey,
+                ordinalsPublicKey,
+            });
+
             const isXverse = provider === 'xverse';
-            const paymentAddressInfo = isXverse ? addressModule.getWrappedSegwitAddressInfo(paymentPublicKey) : null;
+            const paymentAddressInfo = isXverse
+                ? await addressModule.getWrappedSegwitAddressInfo(paymentPublicKey)
+                : null;
 
             // For some reason, when adding the input to psbt it doesn't work, it throws an error
             // but cloning the same psbt to another one works fine
@@ -549,8 +557,6 @@ const OpenOrdex = function (config) {
                         } catch {}
                     }
 
-                    // TODO: improve ts
-                    // @ts-ignore
                     const { redeemScript, script } = paymentAddressInfo || {};
 
                     const inputData = {
@@ -574,7 +580,7 @@ const OpenOrdex = function (config) {
                 }
 
                 if (provider === 'unisat.io') {
-                    const inputAddressInfo = addressModule.getAddressInfo(ordinalsPublicKey);
+                    const inputAddressInfo = await addressModule.getAddressInfo(ordinalsPublicKey);
                     const inputParams = await psbtModule.getInputParams({
                         utxo,
                         inputAddressInfo,
@@ -627,7 +633,9 @@ const OpenOrdex = function (config) {
 
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
-            const paymentAddressInfo = isXverse ? addressModule.getWrappedSegwitAddressInfo(paymentPublicKey) : null;
+            const paymentAddressInfo = isXverse
+                ? await addressModule.getWrappedSegwitAddressInfo(paymentPublicKey)
+                : null;
 
             const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: NETWORK });
 
@@ -641,8 +649,6 @@ const OpenOrdex = function (config) {
                         } catch {}
                     }
 
-                    // TODO: improve ts
-                    // @ts-ignore
                     const { redeemScript, script } = paymentAddressInfo || {};
 
                     const inputData = {
@@ -666,7 +672,7 @@ const OpenOrdex = function (config) {
                 }
 
                 if (provider === 'unisat.io') {
-                    const inputAddressInfo = addressModule.getAddressInfo(ordinalsPublicKey);
+                    const inputAddressInfo = await addressModule.getAddressInfo(ordinalsPublicKey);
                     const inputParams = await psbtModule.getInputParams({
                         utxo,
                         inputAddressInfo,

@@ -17,7 +17,7 @@ const Address = function (config: Config) {
     const addressModule = {
         // Taproot (P2TR)
         getP2TRAddressInfo: (pubkey: string) => {
-            const p2trAddress = btc.p2tr(pubkey, undefined, NETWORK);
+            const p2trAddress = btc.p2tr(pubkey, undefined, config.NETWORK);
             const result = {
                 ...p2trAddress,
                 tapInternalKey: Buffer.from(p2trAddress.tapInternalKey),

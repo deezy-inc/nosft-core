@@ -13,7 +13,6 @@
         "noUnusedParameters": true,
         "noImplicitAny": false,
         "moduleResolution": "nodenext",
-        "skipLibCheck": true,
         "allowSyntheticDefaultImports": true
     },
     "include": ["src/**/*.ts"],

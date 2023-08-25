@@ -141,7 +141,7 @@ const Psbt = function (config) {
             return psbt;
         },
         createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
-            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -153,6 +153,15 @@ const Psbt = function (config) {
         },
 
         signPsbtForBoostByXverse: async ({ psbt, address }) => {
+            console.log('[xverse][signPsbtForBoostByXverse]', {
+                inputsToSign: [
+                    {
+                        address,
+                        signingIndexes: [0],
+                    },
+                ],
+                psbtBase64: psbt.toBase64(),
+            });
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -187,6 +196,8 @@ const Psbt = function (config) {
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeInput(0);
+            console.log('[xverse][signPsbtForBoostByXverse][SIGNED]', finalPsbt.toBase64());
+
             return finalPsbt.toHex();
         },
 
@@ -243,12 +254,22 @@ const Psbt = function (config) {
         },
 
         signAndBroadcastUtxoByXverse: async ({ pubKey, address, utxo, destinationBtcAddress, sendFeeRate }) => {
-            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const basePsbt = await psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
                 destinationBtcAddress,
                 sendFeeRate,
+            });
+
+            console.log('[xverse][signAndBroadcastUtxoByXverse]', {
+                inputsToSign: [
+                    {
+                        address,
+                        signingIndexes: [0],
+                    },
+                ],
+                psbtBase64: basePsbt.toBase64(),
             });
 
             const signPsbtOptions: SignTransactionOptions = {
@@ -286,6 +307,8 @@ const Psbt = function (config) {
                 network: NETWORK,
             }).finalizeAllInputs();
 
+            console.log('[xverse][signPsbtForBoostByXverse][SIGNED]', psbt.toBase64());
+
             return psbtModule.broadcastPsbt(psbt);
         },
 
@@ -300,7 +323,7 @@ const Psbt = function (config) {
                     sendFeeRate,
                 });
             }
-            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
 
             // @ts-ignore
             const psbt = psbtModule.createPsbt({ utxo, inputAddressInfo, destinationBtcAddress, sendFeeRate });
@@ -331,7 +354,7 @@ const Psbt = function (config) {
         },
 
         createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, sighashType }) => {
-            const inputAddressInfo = addressModule.getAddressInfo(pubKey);
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
@@ -370,6 +393,15 @@ const Psbt = function (config) {
         },
 
         signPsbtListingXverse: async ({ psbt, address }) => {
+            console.log('[xverse][signPsbtListingXverse]', {
+                inputsToSign: [
+                    {
+                        address,
+                        signingIndexes: [0],
+                        sigHash: 131,
+                    },
+                ],
+            });
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -405,6 +437,8 @@ const Psbt = function (config) {
             const finalPsbt = bitcoin.Psbt.fromBase64(psbtBase64, {
                 network: NETWORK,
             }).finalizeInput(0);
+
+            console.log('[xverse][signPsbtListingXverse][SIGNED]', finalPsbt.toBase64());
 
             return finalPsbt;
         },
@@ -576,6 +610,11 @@ const Psbt = function (config) {
                 }
             }
 
+            console.log('[xverse][signBuyOrderWithXverse]', {
+                inputsToSign,
+                psbtBase64: psbt.toBase64(),
+            });
+
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -613,6 +652,8 @@ const Psbt = function (config) {
                 finalPsbt.finalizeInput(inputsToSign[i].signingIndexes[0]);
             }
 
+            console.log('[xverse][signBuyOrderWithXverse][SIGNED]', finalPsbt);
+
             return finalPsbt.toBase64();
         },
 
@@ -624,6 +665,7 @@ const Psbt = function (config) {
                 const buffer = Buffer.from(finalPopulatedPsbt, 'hex');
                 signedPsbt = buffer.toString('base64');
             } else if (provider === 'xverse') {
+                // throw new Error('Xverse is not implemented yet.');
                 signedPsbt = await psbtModule.signBuyOrderWithXverse({
                     psbt,
                     address: paymentAddress,
