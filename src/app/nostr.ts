@@ -8,6 +8,7 @@ import { Utxo } from './utxo';
 import * as bitcoin from 'bitcoinjs-lib';
 // @ts-ignore
 import * as ecc from 'tiny-secp256k1';
+import { Psbt } from './psbt';
 
 bitcoin.initEccLib(ecc);
 
@@ -18,13 +19,16 @@ interface TransactionOutput {
 
 const Nostr = function (config: Config) {
     const ordexModule = OpenOrdex(config);
+    const psbtModule = Psbt(config);
     const utxoModule = Utxo(config);
     const nostrPool = _nostrPool(config);
     const nostrModule = {
         filterOrders: async (orders) => {
             for (const order of orders) {
                 try {
-                    const isUtxoSpent = await utxoModule.isSpent({ output: order.tags.find((x) => x?.[0] === 'u')[1] });
+                    const isUtxoSpent = await utxoModule.isSpent({
+                        output: order.tags.find((x) => x?.[0] === 'u')[1],
+                    });
                     if (isUtxoSpent.spent) {
                         continue;
                     }
@@ -226,7 +230,9 @@ const Nostr = function (config: Config) {
                 .sort(
                     (a, b) =>
                         // @ts-ignore
-                        Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
+                        Number(a.tags.find((x) => x?.[0] === 's')[1]) -
+                        // @ts-ignore
+                        Number(b.tags.find((x) => x?.[0] === 's')[1])
                 );
 
             return nostrModule.filterOrders(orders);
@@ -271,7 +277,11 @@ const Nostr = function (config: Config) {
             limit: number;
             filter: any;
         }) => {
-            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
+            const nostrFilter = {
+                kinds: [config.NOSTR_KIND_INSCRIPTION],
+                limit,
+                ...filter,
+            };
             return nostrPool.subscribe(
                 [nostrFilter],
                 async (event) => {
@@ -291,7 +301,11 @@ const Nostr = function (config: Config) {
         },
 
         listOrders: async ({ limit = 5, filter = {} }: { limit: number; filter: any }) => {
-            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
+            const nostrFilter = {
+                kinds: [config.NOSTR_KIND_INSCRIPTION],
+                limit,
+                ...filter,
+            };
             const orders = await nostrPool.list([nostrFilter]);
 
             return orders
@@ -313,11 +327,7 @@ const Nostr = function (config: Config) {
         // Dutch auction API abstracts the process of signing it and publishing it to nostr
         publishOrder: async ({ utxo, ordinalValue, signedPsbt: _signedPsbt, type = 'sell' }) => {
             const signedPsbt =
-                typeof _signedPsbt === 'string'
-                    ? bitcoin.Psbt.fromHex(_signedPsbt, {
-                          network: config.NETWORK,
-                      }).toBase64()
-                    : _signedPsbt;
+                typeof _signedPsbt === 'string' ? psbtModule.getPsbt(_signedPsbt).toBase64() : _signedPsbt;
 
             const data = await axios.post(`${config.AUCTION_URL}/nostr`, {
                 psbt: signedPsbt,

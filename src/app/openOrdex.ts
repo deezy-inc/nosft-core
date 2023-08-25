@@ -244,12 +244,7 @@ const OpenOrdex = function (config) {
         },
 
         getFundingUtxosForBid: async ({ address, utxoPrice, bidPrice, psbt: _psbt, selectedFeeRate }) => {
-            const psbt =
-                typeof _psbt === 'string'
-                    ? bitcoin.Psbt.fromHex(_psbt, {
-                          network: config.NETWORK,
-                      })
-                    : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -308,36 +303,24 @@ const OpenOrdex = function (config) {
                 } catch {}
             }
 
-            let input;
+            console.log('[xverse],[generatePSBTListingInscriptionForSale]');
 
-            if (provider === 'xverse') {
-                console.log('[xverse],[generatePSBTListingInscriptionForSale]');
-                const inputAddressInfo = await addressModule.getP2TRAddressInfo(pubkey);
-                input = {
-                    hash: ordinalUtxoTxId,
-                    index: parseInt(ordinalUtxoVout, 10),
-                    witnessUtxo: {
-                        amount: tx.outs[ordinalUtxoVout].value,
-                        script: inputAddressInfo.script,
-                    },
-                    // Maybe we should add it
-                    // eslint-disable-next-line no-bitwise
-                    sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
-                    sequence: 0xfffffffd,
-                    tapInternalKey: inputAddressInfo.tapInternalKey,
-                };
-            } else {
-                input = {
-                    hash: ordinalUtxoTxId,
-                    index: parseInt(ordinalUtxoVout, 10),
-                    witnessUtxo: tx.outs[ordinalUtxoVout],
-                    // Maybe we should add it
-                    // eslint-disable-next-line no-bitwise
-                    sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
-                    sequence: 0xfffffffd,
-                    nonWitnessUtxo: tx.toBuffer(),
-                };
-            }
+            const input = {
+                hash: ordinalUtxoTxId,
+                index: parseInt(ordinalUtxoVout, 10),
+                witnessUtxo: tx.outs[ordinalUtxoVout],
+                // Maybe we should add it
+                // eslint-disable-next-line no-bitwise
+                sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
+                sequence: 0xfffffffd,
+                ...(provider === 'xverse'
+                    ? {
+                          tapInternalKey: (await addressModule.getP2TRAddressInfo(pubkey)).tapInternalKey,
+                      }
+                    : {
+                          nonWitnessUtxo: tx.toBuffer(),
+                      }),
+            };
 
             psbt.addInput(input);
 
@@ -524,7 +507,7 @@ const OpenOrdex = function (config) {
                 ordinalsPublicKey = null,
                 selectedFeeRate = null,
             } = params;
-            const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: config.NETWORK }) : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
             console.log('[xverse][generateDeezyPSBTListingForBuy]', {
@@ -624,12 +607,7 @@ const OpenOrdex = function (config) {
             ordinalsPublicKey,
             selectedFeeRate,
         }: GenerateDeezyPSBTListingForBid) => {
-            const psbt =
-                typeof _psbt === 'string'
-                    ? bitcoin.Psbt.fromHex(_psbt, {
-                          network: config.NETWORK,
-                      })
-                    : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
 
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
