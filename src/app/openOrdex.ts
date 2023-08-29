@@ -244,12 +244,7 @@ const OpenOrdex = function (config) {
         },
 
         getFundingUtxosForBid: async ({ address, utxoPrice, bidPrice, psbt: _psbt, selectedFeeRate }) => {
-            const psbt =
-                typeof _psbt === 'string'
-                    ? bitcoin.Psbt.fromHex(_psbt, {
-                          network: config.NETWORK,
-                      })
-                    : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
             const payerUtxos = await utxoModule.getAddressUtxos(address);
             if (!payerUtxos.length) {
                 throw new Error(`No utxos found for address ${address}`);
@@ -602,12 +597,7 @@ const OpenOrdex = function (config) {
             ordinalsPublicKey,
             selectedFeeRate,
         }: GenerateDeezyPSBTListingForBid) => {
-            const psbt =
-                typeof _psbt === 'string'
-                    ? bitcoin.Psbt.fromHex(_psbt, {
-                          network: config.NETWORK,
-                      })
-                    : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
 
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
