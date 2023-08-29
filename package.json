@@ -1,6 +1,11 @@
 {
     "name": "nosft-core",
     "version": "2.3.85",
+    "private": false,
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "author": "deezy",
     "engines": {
         "node": ">=18.0.0"
     },
@@ -9,19 +14,16 @@
         "type": "git",
         "url": "https://github.com/deezy-inc/nosft-core"
     },
-    "files": [
-        "./lib/**/*"
-    ],
     "scripts": {
-        "watch": "chokidar 'src/**/*.ts' -c 'just emit-types && just format && just build'"
+        "build": "tsup src/index.ts --format esm,cjs --dts-resolve",
+        "dev": "tsup src/index.ts --format esm,cjs --watch --dts-resolve",
+        "lint": "eslint \"src/**/*.ts*\"",
+        "clean": "rm -rf node_modules && rm -rf dist",
+        "watch": "chokidar 'src/**/*.ts' -c 'npm run build'"
     },
-    "types": "./lib/index.d.ts",
-    "main": "lib/nosft.cjs.js",
-    "module": "lib/esm/nosft.mjs",
-    "exports": {
-        "import": "./lib/esm/nosft.mjs",
-        "require": "./lib/nosft.cjs.js"
-    },
+    "files": [
+        "dist"
+    ],
     "license": "Public domain",
     "dependencies": {
         "@noble/hashes": "^1.3.0",
@@ -64,6 +66,7 @@
         "ts-jest": "^29.0.5",
         "tsd": "^0.22.0",
         "typescript": "^4.9.5",
-        "websocket-polyfill": "^0.0.3"
+        "websocket-polyfill": "^0.0.3",
+        "tsup": "^6.7.0"
     }
 }
