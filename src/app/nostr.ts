@@ -21,7 +21,9 @@ const Nostr = function (config: Config) {
         filterOrders: async (orders) => {
             for (const order of orders) {
                 try {
-                    const isUtxoSpent = await utxoModule.isSpent({ output: order.tags.find((x) => x?.[0] === 'u')[1] });
+                    const isUtxoSpent = await utxoModule.isSpent({
+                        output: order.tags.find((x) => x?.[0] === 'u')[1],
+                    });
                     if (isUtxoSpent.spent) {
                         continue;
                     }
@@ -86,6 +88,7 @@ const Nostr = function (config: Config) {
 
             // group orders by id into multiple arrays
             const groupedOrders = nostrOrders.reduce((acc, order) => {
+                //@ts-ignore
                 const inscriptionId = order.tags.find((x) => x?.[0] === 'i')[1];
                 if (!acc[inscriptionId]) {
                     acc[inscriptionId] = [];
@@ -133,7 +136,9 @@ const Nostr = function (config: Config) {
                 ])
             )
                 .sort((a, b) => {
+                    //@ts-ignore
                     const priceB = Number(b.tags.find((x) => x?.[0] === 's')[1]);
+                    //@ts-ignore
                     const priceA = Number(a.tags.find((x) => x?.[0] === 's')[1]);
                     if (priceB === priceA) {
                         return Number(b.created_at) - Number(a.created_at);
@@ -141,6 +146,7 @@ const Nostr = function (config: Config) {
                         return priceB - priceA;
                     }
                 })
+                //@ts-ignore
                 .reduce((acc, order) => {
                     try {
                         const network = config.NETWORK;
@@ -156,7 +162,8 @@ const Nostr = function (config: Config) {
                         return [
                             ...acc,
                             {
-                                price: Number(order.tags.find((x) => x?.[0] === 's')[1]),
+                                // @ts-ignore
+                                price: Number(order?.tags?.find((x) => x?.[0] === 's')[1]),
                                 bidOwner,
                                 ordinalOwner,
                                 nostr: order,
@@ -185,7 +192,9 @@ const Nostr = function (config: Config) {
                 .sort(
                     (a, b) =>
                         // @ts-ignore
-                        Number(a.tags.find((x) => x?.[0] === 's')[1]) - Number(b.tags.find((x) => x?.[0] === 's')[1])
+                        Number(a.tags.find((x) => x?.[0] === 's')[1]) -
+                        // @ts-ignore
+                        Number(b.tags.find((x) => x?.[0] === 's')[1])
                 );
 
             return nostrModule.filterOrders(orders);
@@ -230,7 +239,11 @@ const Nostr = function (config: Config) {
             limit: number;
             filter: any;
         }) => {
-            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
+            const nostrFilter = {
+                kinds: [config.NOSTR_KIND_INSCRIPTION],
+                limit,
+                ...filter,
+            };
             return nostrPool.subscribe(
                 [nostrFilter],
                 async (event) => {
@@ -250,7 +263,11 @@ const Nostr = function (config: Config) {
         },
 
         listOrders: async ({ limit = 5, filter = {} }: { limit: number; filter: any }) => {
-            const nostrFilter = { kinds: [config.NOSTR_KIND_INSCRIPTION], limit, ...filter };
+            const nostrFilter = {
+                kinds: [config.NOSTR_KIND_INSCRIPTION],
+                limit,
+                ...filter,
+            };
             const orders = await nostrPool.list([nostrFilter]);
 
             return orders

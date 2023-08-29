@@ -290,10 +290,6 @@ const OpenOrdex = function (config) {
 
         generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-            let inputAddressInfo;
-            if (provider === 'xverse') {
-                inputAddressInfo = await addressModule.getAddressInfo(pubkey);
-            }
 
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
             const ordinalUtxoTxId = utxo.txid;
@@ -315,9 +311,13 @@ const OpenOrdex = function (config) {
                 // eslint-disable-next-line no-bitwise
                 sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
                 sequence: 0xfffffffd,
-                ...(inputAddressInfo
-                    ? { tapInternalKey: inputAddressInfo.tapInternalKey }
-                    : { nonWitnessUtxo: tx.toBuffer() }),
+                ...(provider === 'xverse'
+                    ? {
+                          tapInternalKey: (await addressModule.getP2TRAddressInfo(pubkey)).tapInternalKey,
+                      }
+                    : {
+                          nonWitnessUtxo: tx.toBuffer(),
+                      }),
             };
 
             psbt.addInput(input);
@@ -505,10 +505,13 @@ const OpenOrdex = function (config) {
                 ordinalsPublicKey = null,
                 selectedFeeRate = null,
             } = params;
-            const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: config.NETWORK }) : _psbt;
+            const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+
             const isXverse = provider === 'xverse';
-            const paymentAddressInfo = isXverse ? await addressModule.getPaymentAddressInfo(paymentPublicKey) : null;
+            const paymentAddressInfo = isXverse
+                ? await addressModule.getWrappedSegwitAddressInfo(paymentPublicKey)
+                : null;
 
             // For some reason, when adding the input to psbt it doesn't work, it throws an error
             // but cloning the same psbt to another one works fine
@@ -601,7 +604,9 @@ const OpenOrdex = function (config) {
 
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             const isXverse = provider === 'xverse';
-            const paymentAddressInfo = isXverse ? await addressModule.getPaymentAddressInfo(paymentPublicKey) : null;
+            const paymentAddressInfo = isXverse
+                ? await addressModule.getWrappedSegwitAddressInfo(paymentPublicKey)
+                : null;
 
             const psbtx = bitcoin.Psbt.fromBase64(psbt.toBase64(), { network: NETWORK });
 

@@ -576,6 +576,7 @@ const Psbt = function (config) {
                     });
                 }
             }
+
             const signPsbtOptions: SignTransactionOptions = {
                 onFinish: () => {},
                 onCancel: () => {},
@@ -616,7 +617,7 @@ const Psbt = function (config) {
             return finalPsbt.toBase64();
         },
 
-        signPsbtListingForBuy: async ({ psbt, ordinalAddress }): Promise<string> => {
+        signPsbtListingForBuy: async ({ psbt, ordinalAddress, paymentAddress }): Promise<string> => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
             let signedPsbt;
             if (provider === 'unisat.io') {
@@ -624,11 +625,11 @@ const Psbt = function (config) {
                 const buffer = Buffer.from(finalPopulatedPsbt, 'hex');
                 signedPsbt = buffer.toString('base64');
             } else if (provider === 'xverse') {
-                throw new Error('Xverse is not implemented yet.');
-                // signedPsbt = await psbtModule.signBuyOrderWithXverse({
-                //     psbt,
-                //     address: paymentAddress,
-                // });
+                // throw new Error('Xverse is not implemented yet.');
+                signedPsbt = await psbtModule.signBuyOrderWithXverse({
+                    psbt,
+                    address: paymentAddress,
+                });
             } else {
                 const finalPopulatedPsbt = await psbtModule.signPsbtMessage(
                     psbt.toBase64(),
