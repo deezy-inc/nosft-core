@@ -1,6 +1,5 @@
 import axios from 'axios';
 import LocalStorage, { LocalStorageKeys } from '../services/local-storage';
-import { SpentResponse } from '../types/inscriptions';
 
 const Utxo = function (config) {
     const utxoModule = {
@@ -109,7 +108,7 @@ const Utxo = function (config) {
                 data: { spent, ...props },
             } = await axios.get(`${config.MEMPOOL_API_URL}/api/tx/${txid}/outspend/${vout}`);
 
-            const isSpent: SpentResponse = {
+            const isSpent = {
                 ...props,
                 spent,
             };
