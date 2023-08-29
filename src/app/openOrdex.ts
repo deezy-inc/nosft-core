@@ -303,8 +303,6 @@ const OpenOrdex = function (config) {
                 } catch {}
             }
 
-            console.log('[xverse],[generatePSBTListingInscriptionForSale]');
-
             const input = {
                 hash: ordinalUtxoTxId,
                 index: parseInt(ordinalUtxoVout, 10),
@@ -509,11 +507,6 @@ const OpenOrdex = function (config) {
             } = params;
             const psbt = typeof _psbt === 'string' ? psbtModule.getPsbt(_psbt) : _psbt;
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
-
-            console.log('[xverse][generateDeezyPSBTListingForBuy]', {
-                paymentPublicKey,
-                ordinalsPublicKey,
-            });
 
             const isXverse = provider === 'xverse';
             const paymentAddressInfo = isXverse
