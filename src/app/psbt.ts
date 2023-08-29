@@ -666,7 +666,7 @@ const Psbt = function (config) {
 
             if (provider === 'unisat.io') {
                 const signedTx = await window.unisat.signPsbt(virtualToSign.toHex());
-                return psbtModule.broadcastTx(signedTx);
+                return window.unisat.pushPsbt(signedTx);
             }
 
             for (const [index, input] of virtualToSign.data.inputs.entries()) {

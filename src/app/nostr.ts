@@ -12,11 +12,6 @@ import { Psbt } from './psbt';
 
 bitcoin.initEccLib(ecc);
 
-interface TransactionOutput {
-    address: string;
-    value: number;
-}
-
 const Nostr = function (config: Config) {
     const ordexModule = OpenOrdex(config);
     const psbtModule = Psbt(config);
@@ -153,50 +148,16 @@ const Nostr = function (config: Config) {
                 })
                 //@ts-ignore
                 .reduce((acc, order) => {
-                    // validate psbt
                     try {
                         const network = config.NETWORK;
                         const psbt = bitcoin.Psbt.fromBase64(order.content, {
                             network,
                         });
 
-                        const outputs: TransactionOutput[] = [];
-
-                        for (const output of psbt.txOutputs) {
-                            const address: string = bitcoin.address.fromOutputScript(output.script, network);
-                            const value: number = output.value;
-
-                            outputs.push({
-                                address,
-                                value,
-                            });
-                        }
-
-                        // just find the bid owner
-                        // Address appears exactly twice and uses the 10000 at least once.
-                        const targetValue: number = 10000;
-                        let bidOwner = '';
-
-                        const addressCountMap: Map<string, number> = new Map();
-
-                        outputs.forEach((item: TransactionOutput) => {
-                            if (addressCountMap.has(item.address)) {
-                                addressCountMap.set(item.address, addressCountMap.get(item.address)! + 1);
-                            } else {
-                                addressCountMap.set(item.address, 1);
-                            }
-                        });
-
-                        addressCountMap.forEach((value: number, key: string) => {
-                            if (value === 2) {
-                                const usesTargetValue: boolean = outputs.some(
-                                    (item: TransactionOutput) => item.address === key && item.value === targetValue
-                                );
-                                if (usesTargetValue) {
-                                    bidOwner = key;
-                                }
-                            }
-                        });
+                        // use asume output index 1 is the bid owner
+                        const bidOwner = bitcoin.address.fromOutputScript(psbt.txOutputs[1].script, network);
+                        // use asume out index 2 is the ordinal owner
+                        const ordinalOwner = bitcoin.address.fromOutputScript(psbt.txOutputs[2].script, network);
 
                         return [
                             ...acc,
@@ -204,6 +165,7 @@ const Nostr = function (config: Config) {
                                 // @ts-ignore
                                 price: Number(order?.tags?.find((x) => x?.[0] === 's')[1]),
                                 bidOwner,
+                                ordinalOwner,
                                 nostr: order,
                                 output,
                                 created_at: Number(order.created_at),
