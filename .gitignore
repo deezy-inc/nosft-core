@@ -6,3 +6,5 @@ package-lock.json
 lib
 test.html
 .vscode/
+
+.env

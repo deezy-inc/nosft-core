@@ -247,13 +247,13 @@ const Nostr = function (config: Config) {
             return nostrPool.subscribe(
                 [nostrFilter],
                 async (event) => {
-                    console.log('event', event);
+                    // console.log('event', event);
                     try {
                         const order = await ordexModule.getOrderInformation(event);
 
                         callback(undefined, order);
                     } catch (e) {
-                        console.error(e);
+                        // console.error(e);
                     }
                 },
                 () => {

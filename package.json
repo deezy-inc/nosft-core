@@ -1,6 +1,6 @@
 {
     "name": "nosft-core",
-    "version": "2.3.91",
+    "version": "2.3.94",
     "private": false,
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
@@ -19,7 +19,7 @@
         "dev": "tsup src/index.ts --format esm,cjs --watch --dts-resolve",
         "lint": "eslint \"src/**/*.ts*\"",
         "clean": "rm -rf node_modules && rm -rf dist",
-        "watch": "chokidar 'src/**/*.ts' -c 'npm run build'"
+        "watch": "chokidar 'src/**/*.ts' -c 'git add . && git commit --amend && npm version patch && npm run build'"
     },
     "files": [
         "dist"
