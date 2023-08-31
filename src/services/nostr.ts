@@ -37,12 +37,6 @@ class NostrRelay {
 
     subscribe(filter, onEvent, onEose) {
         const sub = this.pool.sub([...this.relays], filter);
-        sub.on('closed', () => {
-            console.log('[closed]');
-        });
-        sub.on('closing', () => {
-            console.log('[closing]');
-        });
         sub.on('event', onEvent);
         sub.on('eose', onEose);
         this.subs.push(sub);
