@@ -104,12 +104,14 @@ const Nostr = function (config: Config) {
             }
             return result;
         },
-        getLatestSellNostrInscription: async ({ inscriptionId }) => {
+
+        getLatestSellNostrInscription: async ({ inscriptionId, output }) => {
             const orders = await nostrPool.list([
                 {
                     kinds: [config.NOSTR_KIND_INSCRIPTION],
                     '#i': [inscriptionId],
                     '#t': ['sell'],
+                    '#u': [output],
                 },
             ]);
             const filteredOrders = orders
