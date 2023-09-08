@@ -7,6 +7,9 @@ const Auction = function (config: Config) {
     const nostrModule = Nostr(config);
     const auctionService = _auctionService(config);
     const auctionModule = {
+        getAuctions: async () => {
+            return auctionService.list();
+        },
         subscribeOrders: async ({ callback, limit = 5 }: { callback: (err, data?: any) => void; limit: number }) => {
             const inscriptions = await auctionService.list();
             const cb = async (error, order) => {

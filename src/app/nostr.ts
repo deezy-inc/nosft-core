@@ -264,6 +264,30 @@ const Nostr = function (config: Config) {
             );
         },
 
+        subscribePlainOrders: ({
+            callback,
+            limit = 5,
+            filter = {},
+        }: {
+            callback: (err, data: any) => void;
+            limit: number;
+            filter: any;
+        }) => {
+            const nostrFilter = {
+                kinds: [config.NOSTR_KIND_INSCRIPTION],
+                limit,
+                ...filter,
+            };
+            return nostrPool.subscribe(
+                [nostrFilter],
+                async (event) => {
+                    callback(undefined, event);
+                },
+                () => {
+                    console.log(`eose`);
+                }
+            );
+        },
         listOrders: async ({ limit = 5, filter = {} }: { limit: number; filter: any }) => {
             const nostrFilter = {
                 kinds: [config.NOSTR_KIND_INSCRIPTION],
