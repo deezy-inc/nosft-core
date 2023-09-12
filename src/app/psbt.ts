@@ -140,13 +140,13 @@ const Psbt = function (config) {
 
             return psbt;
         },
-        createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress }) => {
+        createPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, outputValue = BOOST_UTXO_VALUE }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
                 utxo,
                 inputAddressInfo,
                 destinationBtcAddress,
-                output: BOOST_UTXO_VALUE,
+                output: outputValue,
             });
 
             return psbt.toHex();
