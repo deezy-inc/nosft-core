@@ -410,12 +410,18 @@ const Psbt = function (config) {
             return finalPsbt;
         },
 
-        signPsbtMessage: async (psbt, address, getPsbt = false, ignoreFinalizeDummies = false) => {
+        signPsbtMessage: async (
+            psbt,
+            address,
+            getPsbt = false,
+            ignoreFinalizeDummies = false,
+            isUninscribedListing = false
+        ) => {
             const virtualToSign = bitcoin.Psbt.fromBase64(psbt, {
                 network: NETWORK,
             });
             // if only 1 input, then this is a PSBT listing
-            if (virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) {
+            if ((virtualToSign.inputCount === 1 && virtualToSign.txOutputs.length === 1) || isUninscribedListing) {
                 const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
                 if (provider === 'xverse') {
                     return psbtModule.signPsbtListingXverse({
@@ -651,7 +657,7 @@ const Psbt = function (config) {
             } else if (provider === 'xverse') {
                 const finalPsbt = await psbtModule.signBidWithXverse({
                     psbt,
-                    paymentAddress
+                    paymentAddress,
                 });
                 return finalPsbt;
             } else {

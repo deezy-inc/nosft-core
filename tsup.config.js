@@ -3,15 +3,15 @@ const { NodeModulesPolyfillPlugin } = require('@esbuild-plugins/node-modules-pol
 const wasmPlugin = require('./wasmPlugin');
 
 module.exports = {
-  entryPoints: ['src/index.ts'],
-  format: ['cjs', 'esm', 'iife'], 
-  external: [],
-  esbuildPlugins: [
-    NodeGlobalsPolyfillPlugin({
-      process: true,
-      buffer: true,
-    }),
-    NodeModulesPolyfillPlugin(),
-    wasmPlugin,
-  ],
+    entryPoints: ['src/index.ts'],
+    format: ['cjs', 'esm', 'iife'],
+    external: [],
+    esbuildPlugins: [
+        NodeGlobalsPolyfillPlugin({
+            process: true,
+            buffer: true,
+        }),
+        NodeModulesPolyfillPlugin(),
+        wasmPlugin,
+    ],
 };

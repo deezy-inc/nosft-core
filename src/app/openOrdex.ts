@@ -39,6 +39,15 @@ type GenerateDeezyPSBTListingForBid = {
     selectedFeeRate: number;
 };
 
+export type GeneratePSBTListingInscriptionForSaleArgs = {
+    utxo: any;
+    paymentAddress: string;
+    price: number;
+    pubkey: string;
+    amountToSpend?: number;
+    ownerOrdinalsAddress?: string;
+};
+
 const OpenOrdex = function (config) {
     const utxoModule = Utxo(config);
     const cryptoModule = Crypto(config);
@@ -288,7 +297,14 @@ const OpenOrdex = function (config) {
             return { selectedUtxos };
         },
 
-        generatePSBTListingInscriptionForSale: async ({ utxo, paymentAddress, price, pubkey }) => {
+        generatePSBTListingInscriptionForSale: async ({
+            utxo,
+            paymentAddress,
+            price,
+            pubkey,
+            amountToSpend,
+            ownerOrdinalsAddress,
+        }: GeneratePSBTListingInscriptionForSaleArgs) => {
             const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
 
             const psbt = new bitcoin.Psbt({ network: config.NETWORK });
@@ -321,6 +337,24 @@ const OpenOrdex = function (config) {
             };
 
             psbt.addInput(input);
+
+            let change = 0;
+
+            if (amountToSpend && ownerOrdinalsAddress && amountToSpend > 0) {
+                // Calculate the change
+                change = utxo.value - amountToSpend;
+
+                psbt.addOutput({
+                    address: paymentAddress,
+                    value: amountToSpend,
+                });
+
+                // Add the output for the change
+                psbt.addOutput({
+                    address: ownerOrdinalsAddress,
+                    value: change,
+                });
+            }
 
             psbt.addOutput({
                 address: paymentAddress,
