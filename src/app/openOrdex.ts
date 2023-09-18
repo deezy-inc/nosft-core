@@ -154,7 +154,7 @@ const OpenOrdex = function (config) {
             const inscription = await ordexModule.getInscriptionDataById(inscriptionId);
 
             // @ts-ignore
-            ordexModule.validatePbst(sellerSignedPsbt, inscription.output);
+            ordexModule.validatePbst(sellerSignedPsbt, inscription.output, true);
 
             const value = ordexModule.getPsbtPrice(sellerSignedPsbt);
 
