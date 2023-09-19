@@ -1,6 +1,6 @@
 {
     "name": "nosft-core",
-    "version": "2.5.0",
+    "version": "2.5.1",
     "private": false,
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
@@ -33,7 +33,7 @@
         "axios": "^1.4.0",
         "bip32": "^4.0.0",
         "bitcoin-address-validation": "^2.2.3",
-        "bitcoinjs-lib": "github:deezy-inc/bitcoinjs-lib",
+        "bitcoinjs-lib": "6.1.4",
         "clsx": "^2.0.0",
         "ecpair": "^2.1.0",
         "ethers": "^5.7.2",
@@ -65,8 +65,8 @@
         "prettier": "^2.8.6",
         "ts-jest": "^29.0.5",
         "tsd": "^0.22.0",
+        "tsup": "^6.7.0",
         "typescript": "^4.9.5",
-        "websocket-polyfill": "^0.0.3",
-        "tsup": "^6.7.0"
+        "websocket-polyfill": "^0.0.3"
     }
 }
