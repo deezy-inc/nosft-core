@@ -14,6 +14,12 @@ import { Crypto } from './crypto';
 import { Address } from './address';
 import { NETWORK, NETWORK_NAME, BOOST_UTXO_VALUE } from '../config/constants';
 import { isMetamaskProvider } from './wallet';
+import { Utxo } from './utxo';
+
+type Metadata = {
+    inputs: { index: number; type: 'Ordinal' | 'Cardinal' }[];
+    outputs: { type: 'Ordinal' | 'Change' | 'Cardinal' }[];
+};
 
 bitcoin.initEccLib(ecc);
 
@@ -28,11 +34,11 @@ function isHexadecimal(str) {
 const getPsbt = (psbtContent) => {
     const psbt = isHexadecimal(psbtContent)
         ? bitcoin.Psbt.fromHex(psbtContent, {
-              network: NETWORK,
-          })
+            network: NETWORK,
+        })
         : bitcoin.Psbt.fromBase64(psbtContent, {
-              network: NETWORK,
-          });
+            network: NETWORK,
+        });
 
     return psbt;
 };
@@ -45,6 +51,7 @@ const getPsbtBase64 = (psbtContent) => {
 const Psbt = function (config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
+    const utxoModule = Utxo(config);
 
     const psbtModule = {
         getPsbt,
@@ -154,8 +161,8 @@ const Psbt = function (config) {
 
         signPsbtForBoostByXverse: async ({ psbt, address }) => {
             const signPsbtOptions: SignTransactionOptions = {
-                onFinish: () => {},
-                onCancel: () => {},
+                onFinish: () => { },
+                onCancel: () => { },
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -253,8 +260,8 @@ const Psbt = function (config) {
             });
 
             const signPsbtOptions: SignTransactionOptions = {
-                onFinish: () => {},
-                onCancel: () => {},
+                onFinish: () => { },
+                onCancel: () => { },
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -331,6 +338,167 @@ const Psbt = function (config) {
             return psbtModule.broadcastPsbt(psbt);
         },
 
+        signMultipleUtxosPsbtForSend: async ({
+            address, pubKey, selectedUtxos,
+            ownedUtxos, destinationBtcAddress, sendFeeRate
+        }) => {
+            const utxosWithInscription = selectedUtxos.filter(utxo => utxo.inscriptionId);
+            const utxosWithoutInscription = selectedUtxos.filter(utxo => !utxo.inscriptionId);
+            if (utxosWithInscription.length === 0 && utxosWithoutInscription.length === 0) {
+                throw new Error('At least one ordinal or utxo is required.');
+            }
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider !== 'alby') {
+                throw new Error('Signing not supported.');
+            }
+
+            const cardinalUtxos = ownedUtxos.filter(utxo => !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid))
+                .filter((x) => x.status.confirmed)
+                .filter((x) => x.value > 10000)
+                .filter(utxo => !utxo.inscriptionId)
+                .sort((a, b) => b.value - a.value);
+
+            const selectedAmountWithoutInscription = utxosWithoutInscription.reduce((acc, utxo) => acc + utxo.value, 0);
+            let cardinalAmount = selectedAmountWithoutInscription;
+            let calculatedFee = 0;
+
+            const inputs = [...utxosWithInscription, ...utxosWithoutInscription];
+            let isCardinalAdded = false;
+
+            do {
+                let shouldAddChangeOutput = utxosWithInscription.length > 0 || isCardinalAdded;
+                calculatedFee = cryptoModule.calculateFee({
+                    vins: inputs.length,
+                    vouts: utxosWithInscription.length + 1, // 1 for destination output amount
+                    recommendedFeeRate: sendFeeRate,
+                    includeChangeOutput: shouldAddChangeOutput ? 1 : 0,
+                });
+
+                if (cardinalAmount < calculatedFee) {
+                    const utxo = cardinalUtxos.shift();
+                    if (!utxo) {
+                        throw new Error(`Please add more cardinal funds to your wallet.`);
+                    }
+                    inputs.push(utxo);
+                    cardinalAmount += utxo.value;
+                    isCardinalAdded = true;
+                }
+            } while (cardinalAmount < calculatedFee);
+
+            const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
+            const psbt = new bitcoin.Psbt({ network: config.NETWORK });
+
+            for (const utxo of inputs) {
+                const inputParams = psbtModule.getInputParams({ utxo, inputAddressInfo });
+                psbt.addInput(inputParams);
+            }
+
+            const ordinals = inputs.filter(utxo => utxo.inscriptionId);
+            const nonOrdinals = inputs.filter(utxo => !utxo.inscriptionId);
+            const spendableAmount = nonOrdinals.reduce((acc, utxo) => acc + utxo.value, 0);
+
+            const metadata: Metadata = {
+                inputs: inputs.map((utxo, index) => ({
+                    index,
+                    type: utxo.inscriptionId ? 'Ordinal' : 'Cardinal',
+                })),
+                outputs: [],
+            };
+
+            // Add ordinal outputs
+            ordinals.forEach(utxo => {
+                psbt.addOutput({
+                    address: destinationBtcAddress,
+                    value: utxo.value,
+                });
+                metadata.outputs.push({ type: 'Ordinal' });
+            });
+
+            let changeAmount = 0;
+
+            // Calculate and add change output if needed
+            if (isCardinalAdded) {
+                changeAmount = cardinalAmount - calculatedFee;
+                psbt.addOutput({
+                    address,
+                    value: changeAmount,
+                });
+                metadata.outputs.push({ type: 'Change' });
+            }
+
+            // Calculate and add destination output
+            const destinationOutputValue = spendableAmount - changeAmount - calculatedFee;
+            if (destinationOutputValue > 0) {
+                psbt.addOutput({
+                    address: destinationBtcAddress,
+                    value: destinationOutputValue,
+                });
+                metadata.outputs.push({ type: 'Cardinal' });
+            }
+
+            const witnessScripts = [];
+            const witnessValues = [];
+
+            psbt.data.inputs.forEach((input, i) => {
+                if (!input.finalScriptWitness && !input.witnessUtxo) {
+                    // @ts-ignore
+                    const tx = bitcoin.Transaction.fromBuffer(psbt.data.inputs[i].nonWitnessUtxo);
+                    const output = tx.outs[psbt.txInputs[i].index];
+                    psbt.updateInput(i, {
+                        witnessUtxo: output,
+                    });
+                    // @ts-ignore
+                    witnessScripts.push(output.script);
+                    // @ts-ignore
+                    witnessValues.push(output.value);
+                } else {
+                    // @ts-ignore
+                    witnessScripts.push(psbt.data.inputs[i].witnessUtxo.script);
+                    // @ts-ignore
+                    witnessValues.push(psbt.data.inputs[i].witnessUtxo.value);
+                }
+            });
+
+            const psbtOutputs = psbt.data.inputs.map((_, index) => {
+                // @ts-ignore
+                const sigHash = psbt.__CACHE.__TX.hashForWitnessV1(
+                    index,
+                    witnessScripts,
+                    witnessValues,
+                    bitcoin.Transaction.SIGHASH_DEFAULT
+                );
+
+                return {
+                    index,
+                    sigHash: sigHash.toString('hex')
+                };
+            });
+
+            await Promise.all(psbtOutputs.map(async output => {
+                const signature = await window.nostr.signSchnorr(output.sigHash);
+                psbt.updateInput(output.index, {
+                    tapKeySig: serializeTaprootSignature(Buffer.from(signature, 'hex')),
+                });
+                return signature;
+            }));
+
+            const final_signed_psbt = psbt.finalizeAllInputs();
+            const final_fee = final_signed_psbt.getFee();
+            const final_tx = final_signed_psbt.extractTransaction();
+            const final_vbytes = final_tx.virtualSize();
+            const final_fee_rate = (final_fee / final_vbytes).toFixed(1);
+            const final_signed_hex_psbt = final_signed_psbt.toHex();
+            console.log('final_signed_hex_psbt', final_signed_hex_psbt);
+
+            return {
+                final_fee_rate,
+                final_fee,
+                final_signed_hex_psbt,
+                final_signed_psbt,
+                metadata
+            };
+        },
+
         createAndSignPsbtForBoost: async ({ pubKey, utxo, destinationBtcAddress, sighashType }) => {
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
             const psbt = psbtModule.createPsbt({
@@ -372,8 +540,8 @@ const Psbt = function (config) {
 
         signPsbtListingXverse: async ({ psbt, address }) => {
             const signPsbtOptions: SignTransactionOptions = {
-                onFinish: () => {},
-                onCancel: () => {},
+                onFinish: () => { },
+                onCancel: () => { },
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -578,8 +746,8 @@ const Psbt = function (config) {
             }
 
             const signPsbtOptions: SignTransactionOptions = {
-                onFinish: () => {},
-                onCancel: () => {},
+                onFinish: () => { },
+                onCancel: () => { },
                 payload: {
                     network: {
                         type: NETWORK_NAME,
@@ -677,8 +845,8 @@ const Psbt = function (config) {
             }
 
             const signPsbtOptions: SignTransactionOptions = {
-                onFinish: () => {},
-                onCancel: () => {},
+                onFinish: () => { },
+                onCancel: () => { },
                 payload: {
                     network: {
                         type: NETWORK_NAME,
