@@ -338,7 +338,7 @@ const Psbt = function (config) {
             return psbtModule.broadcastPsbt(psbt);
         },
 
-        signMultipleUtxosPsbtForSend: async ({
+        preparePsbtForMultipleSend: async ({
             address, pubKey, selectedUtxos,
             ownedUtxos, destinationBtcAddress, sendFeeRate
         }) => {
@@ -435,6 +435,20 @@ const Psbt = function (config) {
                 });
                 metadata.outputs.push({ type: 'Cardinal' });
             }
+            debugger;
+            return {
+                unsignedPsbtHex: psbt.toHex(),
+                metadata
+            };
+        },
+
+        signPsbtForMultipleSend: async (unsignedPsbtHex) => {
+            const provider = SessionStorage.get(SessionsStorageKeys.DOMAIN);
+            if (provider !== 'alby') {
+                throw new Error('Signing not supported.');
+            }
+
+            const psbt = bitcoin.Psbt.fromHex(unsignedPsbtHex, { network: NETWORK });
 
             const witnessScripts = [];
             const witnessValues = [];
@@ -482,20 +496,19 @@ const Psbt = function (config) {
                 return signature;
             }));
 
-            const final_signed_psbt = psbt.finalizeAllInputs();
-            const final_fee = final_signed_psbt.getFee();
-            const final_tx = final_signed_psbt.extractTransaction();
-            const final_vbytes = final_tx.virtualSize();
-            const final_fee_rate = (final_fee / final_vbytes).toFixed(1);
-            const final_signed_hex_psbt = final_signed_psbt.toHex();
-            console.log('final_signed_hex_psbt', final_signed_hex_psbt);
+            const finalSignedPsbt = psbt.finalizeAllInputs();
+            const finalFee = finalSignedPsbt.getFee();
+            const finalTx = finalSignedPsbt.extractTransaction();
+            const finalVBytes = finalTx.virtualSize();
+            const finalFeeRate = (finalFee / finalVBytes).toFixed(1);
+            const finalSignedHexPsbt = finalSignedPsbt.toHex();
+            console.log('final_signed_hex_psbt', finalSignedHexPsbt);
 
             return {
-                final_fee_rate,
-                final_fee,
-                final_signed_hex_psbt,
-                final_signed_psbt,
-                metadata
+                finalFeeRate,
+                finalFee,
+                finalSignedHexPsbt,
+                finalSignedPsbt,
             };
         },
 
