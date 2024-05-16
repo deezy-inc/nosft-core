@@ -43,7 +43,7 @@ const Crypto = function (config) {
             const txSize = baseTxSize + vins * inSize + vouts * outSize + includeChangeOutput * outSize;
 
             const fee = Math.round(txSize * recommendedFeeRate);
-
+            debugger;
             return fee;
         },
 
@@ -95,11 +95,11 @@ const Crypto = function (config) {
                                 d?.get
                                     ? d
                                     : {
-                                          enumerable: true,
-                                          get: function () {
-                                              return e[k];
-                                          },
-                                      }
+                                        enumerable: true,
+                                        get: function () {
+                                            return e[k];
+                                        },
+                                    }
                             );
                         }
                     });
