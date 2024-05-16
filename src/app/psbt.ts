@@ -358,35 +358,34 @@ const Psbt = function (config) {
                 .filter(utxo => !utxo.inscriptionId)
                 .sort((a, b) => b.value - a.value);
 
-            const selectedAmountWithoutInscription = utxosWithoutInscription.reduce((acc, utxo) => acc + utxo.value, 0);
+            const selectedCardinalAmount = utxosWithoutInscription.reduce((acc, utxo) => acc + utxo.value, 0);
             const inputs = [...utxosWithInscription, ...utxosWithoutInscription];
 
-            let cardinalAmount = selectedAmountWithoutInscription;
+            let totalCardinalAmount = selectedCardinalAmount;
             let calculatedFee = 0;
             let isCardinalAdded = false;
 
-            // Initial fee calculation
-            calculatedFee = cryptoModule.calculateFee({
-                vins: inputs.length,
-                vouts: utxosWithInscription.length + 1, // 1 for destination output amount
-                recommendedFeeRate: sendFeeRate,
-                includeChangeOutput: 0,
-            });
+            while (cardinalUtxos.length > 0 || calculatedFee === 0) {
+                calculatedFee = cryptoModule.calculateFee({
+                    vins: inputs.length,
+                    vouts: utxosWithInscription.length + (selectedCardinalAmount > 0 ? 1 : 0) + (isCardinalAdded ? 1 : 0), // # of ordinals + 1 cardinal amount + 1 change
+                    recommendedFeeRate: sendFeeRate,
+                    includeChangeOutput: 0,
+                });
 
-            while (cardinalAmount < calculatedFee) {
+                if (totalCardinalAmount >= calculatedFee) break;
+
                 const utxo = cardinalUtxos.shift();
                 if (!utxo) {
                     throw new Error(`Please add more cardinal funds to your wallet.`);
                 }
                 inputs.push(utxo);
-                cardinalAmount += utxo.value;
+                totalCardinalAmount += utxo.value;
                 isCardinalAdded = true;
-                calculatedFee = cryptoModule.calculateFee({
-                    vins: inputs.length,
-                    vouts: utxosWithInscription.length + 1, // 1 for destination output amount
-                    recommendedFeeRate: sendFeeRate,
-                    includeChangeOutput: 1,
-                });
+            }
+
+            if (totalCardinalAmount < calculatedFee) {
+                throw new Error(`Please add more cardinal funds to your wallet.`);
             }
 
             const inputAddressInfo = await addressModule.getAddressInfo(pubKey);
@@ -398,8 +397,6 @@ const Psbt = function (config) {
             }
 
             const ordinals = inputs.filter(utxo => utxo.inscriptionId);
-            const nonOrdinals = inputs.filter(utxo => !utxo.inscriptionId);
-            const spendableAmount = nonOrdinals.reduce((acc, utxo) => acc + utxo.value, 0);
 
             const metadata: Metadata = {
                 inputs: inputs.map((utxo, index) => ({
@@ -420,25 +417,29 @@ const Psbt = function (config) {
 
             let changeAmount = 0;
 
-            // Calculate and add change output if needed
+            // Add change output if we added cardinal funds
             if (isCardinalAdded) {
-                changeAmount = cardinalAmount - calculatedFee;
+                changeAmount = totalCardinalAmount - selectedCardinalAmount - calculatedFee;
                 psbt.addOutput({
                     address,
                     value: changeAmount,
                 });
                 metadata.outputs.push({ type: 'Change' });
-            }
-
-            // Calculate and add destination output
-            if (selectedAmountWithoutInscription > 0) {
+                if (selectedCardinalAmount > 0) {
+                    psbt.addOutput({
+                        address: destinationBtcAddress,
+                        value: selectedCardinalAmount,
+                    });
+                    metadata.outputs.push({ type: 'Cardinal' });
+                }
+            } else {
                 psbt.addOutput({
                     address: destinationBtcAddress,
-                    value: selectedAmountWithoutInscription,
+                    value: selectedCardinalAmount - calculatedFee,
                 });
                 metadata.outputs.push({ type: 'Cardinal' });
             }
-            debugger;
+
             return {
                 unsignedPsbtHex: psbt.toHex(),
                 metadata
@@ -505,7 +506,6 @@ const Psbt = function (config) {
             const finalVBytes = finalTx.virtualSize();
             const finalFeeRate = (finalFee / finalVBytes).toFixed(1);
             const finalSignedHexPsbt = finalSignedPsbt.toHex();
-            console.log('final_signed_hex_psbt', finalSignedHexPsbt);
 
             return {
                 finalFeeRate,

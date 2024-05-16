@@ -43,7 +43,6 @@ const Crypto = function (config) {
             const txSize = baseTxSize + vins * inSize + vouts * outSize + includeChangeOutput * outSize;
 
             const fee = Math.round(txSize * recommendedFeeRate);
-            debugger;
             return fee;
         },
 
