@@ -406,6 +406,7 @@ const Psbt = function (config) {
                 inputs: inputs.map((utxo, index) => ({
                     index,
                     type: utxo.inscriptionId ? 'Ordinal' : 'Cardinal',
+                    value: utxo.value,
                 })),
                 outputs: [],
             };
