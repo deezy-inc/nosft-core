@@ -337,7 +337,10 @@ const Psbt = function (config) {
             // Send it!
             return psbtModule.broadcastPsbt(psbt);
         },
-
+        // preparePsbtForMultipleSend allows safe bulk UTXO transfers, with appropriate fees.
+        // 1. Any input UTXOs with an inscription will be created as a distinct output UTXO of the same size, and appear before any non-inscription UTXOs in the resultant PSBT
+        // 2. Any input UTXOs without an inscription will have their amounts consolidated into a single output UTXO
+        // 3. A check is run to ensure that enough cardinal funds are available to perform the transfer. If step 2 does not contain enough cardinal funds, cardinal funds will be appended to the PSBT, and another change output will be created
         preparePsbtForMultipleSend: async ({
             address, pubKey, selectedUtxos,
             ownedUtxos, destinationBtcAddress, sendFeeRate
@@ -352,6 +355,7 @@ const Psbt = function (config) {
                 throw new Error('Signing not supported.');
             }
 
+            // only used if selectedCardinalAmount is not large enough to cover fees
             const cardinalUtxos = ownedUtxos.filter(utxo => !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid))
                 .filter((x) => x.status.confirmed)
                 .filter((x) => x.value > 10000)
