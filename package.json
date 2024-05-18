@@ -1,6 +1,6 @@
 {
     "name": "nosft-core",
-    "version": "2.5.0",
+    "version": "2.5.11",
     "private": false,
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
@@ -12,7 +12,7 @@
     "description": "Tools for making a Nosft client.",
     "repository": {
         "type": "git",
-        "url": "https://github.com/deezy-inc/nosft-core"
+        "url": "git+https://github.com/deezy-inc/nosft-core.git"
     },
     "scripts": {
         "build": "tsup src/index.ts --format esm,cjs --dts-resolve",
