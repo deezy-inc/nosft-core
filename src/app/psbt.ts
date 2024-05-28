@@ -18,7 +18,7 @@ import { Utxo } from './utxo';
 
 type Metadata = {
     inputs: { index: number; type: 'Ordinal' | 'Cardinal' }[];
-    outputs: { type: 'Ordinal' | 'Change' | 'Cardinal' }[];
+    outputs: { type: 'Ordinal' | 'Change' | 'Cardinal' | 'Cardinal - Runes' | 'Ordinal - Runes' }[];
 };
 
 bitcoin.initEccLib(ecc);
@@ -52,6 +52,35 @@ const Psbt = function (config) {
     const addressModule = Address(config);
     const cryptoModule = Crypto(config);
     const utxoModule = Utxo(config);
+
+    const checkForRunes = async (utxos) => {
+        for (const utxo of utxos) {
+            try {
+                const output = await utxoModule.getOutput(`${utxo.txid}:${utxo.vout}`);
+                if (output.runes && output.runes.length > 0) {
+                    return true;
+                }
+            } catch (e) {
+                console.log(`Error fetching output for ${utxo.txid}:${utxo.vout}`, e);
+            }
+        }
+        return false;
+    };
+
+    const filterCardinalUtxos = async (utxos) => {
+        const filteredUtxos = [];
+        for (const utxo of utxos) {
+            try {
+                const output = await utxoModule.getOutput(`${utxo.txid}:${utxo.vout}`);
+                if (!output.runes || output.runes.length === 0) {
+                    filteredUtxos.push(utxo);
+                }
+            } catch (e) {
+                console.log(`Error fetching output for ${utxo.txid}:${utxo.vout}`, e);
+            }
+        }
+        return filteredUtxos;
+    };
 
     const psbtModule = {
         getPsbt,
@@ -356,11 +385,14 @@ const Psbt = function (config) {
             }
 
             // only used if selectedCardinalAmount is not large enough to cover fees
-            const cardinalUtxos = ownedUtxos.filter(utxo => !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid))
+            const availableCardinalUtxos = ownedUtxos.filter(utxo => !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid))
                 .filter((x) => x.status.confirmed)
                 .filter((x) => x.value > 10000)
                 .filter(utxo => !utxo.inscriptionId)
                 .sort((a, b) => b.value - a.value);
+
+            const hasRunes = await checkForRunes(utxosWithoutInscription);
+            const cardinalUtxos = await filterCardinalUtxos(availableCardinalUtxos);
 
             const selectedCardinalAmount = utxosWithoutInscription.reduce((acc, utxo) => acc + utxo.value, 0);
             const inputs = [...utxosWithInscription, ...utxosWithoutInscription];
@@ -443,6 +475,10 @@ const Psbt = function (config) {
                     value: selectedCardinalAmount - calculatedFee,
                 });
                 metadata.outputs.push({ type: 'Cardinal' });
+            }
+
+            if (metadata.outputs[0] && hasRunes) {
+                metadata.outputs[0].type = metadata.outputs[0].type + `${hasRunes ? ' - Runes' : ''}`;
             }
 
             return {
