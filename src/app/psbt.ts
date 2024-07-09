@@ -53,33 +53,32 @@ const Psbt = function (config) {
     const cryptoModule = Crypto(config);
     const utxoModule = Utxo(config);
 
+    const hasRunes = async (utxo) => {
+        try {
+            const output = await utxoModule.getOutput(`${utxo.txid}:${utxo.vout}`);
+            return output.runes && output.runes.length > 0;
+        } catch (e) {
+            console.log(`Error fetching output for ${utxo.txid}:${utxo.vout}`, e);
+            return true; // it is better to return true if there is an error it should not happen
+        }
+    };
+
     const checkForRunes = async (utxos) => {
         for (const utxo of utxos) {
-            try {
-                const output = await utxoModule.getOutput(`${utxo.txid}:${utxo.vout}`);
-                if (output.runes && output.runes.length > 0) {
-                    return true;
-                }
-            } catch (e) {
-                console.log(`Error fetching output for ${utxo.txid}:${utxo.vout}`, e);
+            if (await hasRunes(utxo)) {
+                return true;
             }
         }
         return false;
     };
 
-    const filterCardinalUtxos = async (utxos) => {
-        const filteredUtxos = [];
+    const removeRunes = async (utxos) => {
+        const utxosWithoutRunes: any[] = [];
         for (const utxo of utxos) {
-            try {
-                const output = await utxoModule.getOutput(`${utxo.txid}:${utxo.vout}`);
-                if (!output.runes || output.runes.length === 0) {
-                    filteredUtxos.push(utxo);
-                }
-            } catch (e) {
-                console.log(`Error fetching output for ${utxo.txid}:${utxo.vout}`, e);
-            }
+            if (await hasRunes(utxo)) continue;
+            utxosWithoutRunes.push(utxo);
         }
-        return filteredUtxos;
+        return utxosWithoutRunes;
     };
 
     const psbtModule = {
@@ -375,7 +374,13 @@ const Psbt = function (config) {
             ownedUtxos, destinationBtcAddress, sendFeeRate
         }) => {
             const utxosWithInscription = selectedUtxos.filter(utxo => utxo.inscriptionId);
-            const utxosWithoutInscription = selectedUtxos.filter(utxo => !utxo.inscriptionId);
+            let utxosWithoutInscription = selectedUtxos.filter(utxo => !utxo.inscriptionId);
+
+            // Remove runes if there are inscriptions
+            if (utxosWithInscription.length > 0) {
+                utxosWithoutInscription = await removeRunes(utxosWithoutInscription);
+            }
+
             if (utxosWithInscription.length === 0 && utxosWithoutInscription.length === 0) {
                 throw new Error('At least one ordinal or utxo is required.');
             }
@@ -383,16 +388,21 @@ const Psbt = function (config) {
             if (provider !== 'alby') {
                 throw new Error('Signing not supported.');
             }
-
+ 
             // only used if selectedCardinalAmount is not large enough to cover fees
-            const availableCardinalUtxos = ownedUtxos.filter(utxo => !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid))
-                .filter((x) => x.status.confirmed)
-                .filter((x) => x.value > 10000)
-                .filter(utxo => !utxo.inscriptionId)
+            let cardinalUtxos = ownedUtxos
+                .filter(utxo =>
+                    !selectedUtxos.some(ownedUtxo => ownedUtxo.txid === utxo.txid) &&
+                    utxo.status.confirmed &&
+                    utxo.value > 10000 &&
+                    !utxo.inscriptionId
+                )
                 .sort((a, b) => b.value - a.value);
 
-            const hasRunes = await checkForRunes(utxosWithoutInscription);
-            const cardinalUtxos = await filterCardinalUtxos(availableCardinalUtxos);
+            // Remove runes from cardinal utxos
+            cardinalUtxos = await removeRunes(cardinalUtxos);
+
+            const hasTxRunes = await checkForRunes(utxosWithoutInscription);
 
             const selectedCardinalAmount = utxosWithoutInscription.reduce((acc, utxo) => acc + utxo.value, 0);
             const inputs = [...utxosWithInscription, ...utxosWithoutInscription];
@@ -477,8 +487,8 @@ const Psbt = function (config) {
                 metadata.outputs.push({ type: 'Cardinal' });
             }
 
-            if (metadata.outputs[0] && hasRunes) {
-                metadata.outputs[0].type = metadata.outputs[0].type + `${hasRunes ? ' - Runes' : ''}`;
+            if (metadata.outputs[0] && hasTxRunes) {
+                metadata.outputs[0].type = metadata.outputs[0].type + `${hasTxRunes ? ' - Runes' : ''}`;
             }
 
             return {
